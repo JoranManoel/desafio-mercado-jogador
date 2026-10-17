@@ -1,0 +1,168 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Jogadores: valor_base é persistido; market_value e overall são calculados.
+model Player {
+  id        Int       @id @default(autoincrement())
+  name      String    @map("nome") @db.VarChar(100)
+  position  String    @map("posicao") @db.VarChar(3)
+  agility   Int       @map("agilidade")
+  age       Int       @map("idade")
+  baseValue Decimal   @map("valor_base") @db.Decimal(6, 2)
+  condition String    @default("APTO") @map("condicao") @db.VarChar(20)
+  clubId    Int?      @map("clube_id")
+  pace      Int       @map("velocidade")
+  shooting  Int       @map("finalizacao")
+  passing   Int       @map("passe")
+  dribbling Int       @map("drible")
+  defending Int       @map("defesa")
+  physical  Int       @map("fisico")
+  potential Int       @map("potencial")
+  deletedAt DateTime? @map("excluido_em") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("criado_em") @db.Timestamptz(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(3)
+
+  club            Club?         @relation("ClubPlayers", fields: [clubId], references: [id], onDelete: Restrict)
+  contracts       Contract[]
+  transactions    Transaction[]
+  lineupEntry     Lineup?
+  duelsAsAttacker Duel[]        @relation("DuelAttacker")
+  duelsAsDefender Duel[]        @relation("DuelDefender")
+
+  @@index([clubId, deletedAt])
+  @@map("jogadores")
+}
+
+// Patrimônio e valor do elenco serão calculados nas consultas.
+model Club {
+  id             Int      @id @default(autoincrement())
+  name           String   @map("nome") @db.VarChar(60)
+  nameNormalized String   @unique @map("nome_normalizado") @db.VarChar(60)
+  acronym        String   @unique @map("sigla") @db.Char(3)
+  cash           Decimal  @default(300.00) @map("caixa") @db.Decimal(10, 2)
+  formation      String?  @map("formacao") @db.VarChar(5)
+  createdAt      DateTime @default(now()) @map("criado_em") @db.Timestamptz(3)
+
+  players        Player[]      @relation("ClubPlayers")
+  contracts      Contract[]
+  transactions   Transaction[]
+  lineupEntries  Lineup[]
+  homeMatches    Match[]       @relation("HomeClub")
+  awayMatches    Match[]       @relation("AwayClub")
+  attackingDuels Duel[]        @relation("DuelAttackingClub")
+
+  @@map("clubes")
+}
+
+// Mantém os contratos anteriores como histórico.
+model Contract {
+  id            Int       @id @default(autoincrement())
+  playerId      Int       @map("jogador_id")
+  clubId        Int       @map("clube_id")
+  purchaseValue Decimal   @map("valor_compra") @db.Decimal(6, 2)
+  loyaltyUntil  DateTime  @map("fidelidade_ate") @db.Timestamptz(3)
+  status        String    @map("situacao") @db.VarChar(12)
+  startedAt     DateTime  @map("iniciado_em") @db.Timestamptz(3)
+  endedAt       DateTime? @map("encerrado_em") @db.Timestamptz(3)
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Restrict)
+
+  @@index([playerId, status])
+  @@index([clubId, startedAt])
+  @@map("contratos")
+}
+
+// Valores e nomes são snapshots imutáveis da operação.
+model Transaction {
+  id         Int      @id @default(autoincrement())
+  clubId     Int      @map("clube_id")
+  playerId   Int      @map("jogador_id")
+  playerName String   @map("nome_jogador") @db.VarChar(100)
+  type       String   @map("tipo") @db.VarChar(6)
+  value      Decimal  @map("valor") @db.Decimal(6, 2)
+  fee        Decimal  @map("taxa") @db.Decimal(6, 2)
+  penalty    Decimal  @map("multa") @db.Decimal(6, 2)
+  profit     Decimal? @map("lucro") @db.Decimal(7, 2)
+  cashChange Decimal  @map("variacao_caixa") @db.Decimal(8, 2)
+  createdAt  DateTime @default(now()) @map("criado_em") @db.Timestamptz(3)
+
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Restrict)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  @@index([clubId, createdAt, id])
+  @@index([clubId, playerId])
+  @@map("transacoes")
+}
+
+// A PK é composta; a restrição adicional torna o jogador único globalmente.
+model Lineup {
+  clubId    Int      @map("clube_id")
+  playerId  Int      @unique @map("jogador_id")
+  createdAt DateTime @default(now()) @map("criado_em") @db.Timestamptz(3)
+
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Restrict)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  @@id([clubId, playerId])
+  @@map("escalacoes")
+}
+
+// O placar e as formações são snapshots da partida.
+model Match {
+  id            Int      @id @default(autoincrement())
+  homeClubId    Int      @map("mandante_id")
+  awayClubId    Int      @map("visitante_id")
+  homeGoals     Int      @map("gols_mandante")
+  awayGoals     Int      @map("gols_visitante")
+  homeFormation String   @map("formacao_mandante") @db.VarChar(5)
+  awayFormation String   @map("formacao_visitante") @db.VarChar(5)
+  playedAt      DateTime @default(now()) @map("jogada_em") @db.Timestamptz(3)
+
+  homeClub Club   @relation("HomeClub", fields: [homeClubId], references: [id], onDelete: Restrict)
+  awayClub Club   @relation("AwayClub", fields: [awayClubId], references: [id], onDelete: Restrict)
+  duels    Duel[]
+
+  @@index([playedAt, id])
+  @@index([homeClubId])
+  @@index([awayClubId])
+  @@map("partidas")
+}
+
+// Cada duelo mantém os dados utilizados naquele instante, sem depender
+// dos valores atuais dos jogadores.
+model Duel {
+  id                Int     @id @default(autoincrement())
+  matchId           Int     @map("partida_id")
+  order             Int     @map("ordem")
+  attackingClubId   Int     @map("clube_atacante_id")
+  attackerId        Int     @map("atacante_id")
+  defenderId        Int     @map("defensor_id")
+  attackerName      String  @map("nome_atacante") @db.VarChar(100)
+  defenderName      String  @map("nome_defensor") @db.VarChar(100)
+  attackerPosition  String  @map("posicao_atacante") @db.VarChar(3)
+  defenderPosition  String  @map("posicao_defensor") @db.VarChar(3)
+  attackerCondition String  @map("condicao_atacante") @db.VarChar(20)
+  defenderCondition String  @map("condicao_defensor") @db.VarChar(20)
+  attackAttribute   String  @map("atributo_ataque") @db.VarChar(10)
+  defenseAttribute  String  @map("atributo_defesa") @db.VarChar(10)
+  attackValue       Int     @map("valor_ataque")
+  defenseValue      Int     @map("valor_defesa")
+  goal              Boolean @default(false) @map("gol")
+
+  match         Match  @relation(fields: [matchId], references: [id], onDelete: Restrict)
+  attackingClub Club   @relation("DuelAttackingClub", fields: [attackingClubId], references: [id], onDelete: Restrict)
+  attacker      Player @relation("DuelAttacker", fields: [attackerId], references: [id], onDelete: Restrict)
+  defender      Player @relation("DuelDefender", fields: [defenderId], references: [id], onDelete: Restrict)
+
+  @@unique([matchId, order])
+  @@index([attackingClubId])
+  @@map("duelos_partida")
+}
