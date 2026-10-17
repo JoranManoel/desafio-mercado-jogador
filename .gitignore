@@ -9,3 +9,6 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Prisma Client generated from schema
+backend/src/generated/prisma/
