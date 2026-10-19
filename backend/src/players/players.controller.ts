@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -17,6 +18,7 @@ import { CreatePlayerDto } from './dto/create-player.dto';
 import { PlayersService } from './players.service';
 import { UpdatePlayerDto } from './dto/update-player.dto';
 import { UpdatePlayerConditionDto } from './dto/update-player-condition.dto';
+import { ListPlayersQueryDto } from './dto/list-players-query';
 
 @Controller('players')
 export class PlayersController {
@@ -35,6 +37,11 @@ export class PlayersController {
     );
 
     return player;
+  }
+
+  @Get()
+  findAll(@Query() query: ListPlayersQueryDto) {
+    return this.playersService.findAll(query);
   }
 
   @Get(':id')
