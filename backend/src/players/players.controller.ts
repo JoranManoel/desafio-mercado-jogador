@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -50,5 +53,11 @@ export class PlayersController {
     @Body() dto: UpdatePlayerConditionDto,
   ) {
     return this.playersService.updateCondition(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Param('id') id: string): Promise<void> {
+    await this.playersService.remove(id);
   }
 }

@@ -26,32 +26,6 @@ import { UpdatePlayerConditionDto } from './dto/update-player-condition.dto';
 export class PlayersService {
   constructor(private readonly prisma: PrismaService) { }
 
-  private async findActivePlayerOrThrow(id: number) {
-    const player = await this.prisma.player.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-    });
-
-    if (!player) {
-      throw new NotFoundException('Jogador não encontrado.');
-    }
-
-    return player;
-  }
-
-  private validateAgeAndAgility(
-    age: number,
-    agility: number,
-  ): void {
-    if (age >= 35 && agility > 85) {
-      throw new BadRequestException(
-        'Agilidade máxima para jogadores com 35 anos ou mais é 85.',
-      );
-    }
-  }
-
   async create(dto: CreatePlayerDto) {
     this.validateCrossFieldRules(dto);
 
@@ -179,6 +153,52 @@ export class PlayersService {
 
     return this.toApiResponse(updated);
   }
+
+  async remove(rawId: string): Promise<void> {
+    const id = this.parseCanonicalId(rawId);
+    const player = await this.findActivePlayerOrThrow(id);
+
+    if (player.clubId !== null) {
+      throw new ConflictException(
+        'Não é possível excluir um jogador vinculado a um clube.',
+      );
+    }
+
+    await this.prisma.player.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+
+  private async findActivePlayerOrThrow(id: number) {
+    const player = await this.prisma.player.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+    });
+
+    if (!player) {
+      throw new NotFoundException('Jogador não encontrado.');
+    }
+
+    return player;
+  }
+
+  private validateAgeAndAgility(
+    age: number,
+    agility: number,
+  ): void {
+    if (age >= 35 && agility > 85) {
+      throw new BadRequestException(
+        'Agilidade máxima para jogadores com 35 anos ou mais é 85.',
+      );
+    }
+  }
+
 
   private validateCrossFieldRules(dto: CreatePlayerDto): void {
     const attributes = [
