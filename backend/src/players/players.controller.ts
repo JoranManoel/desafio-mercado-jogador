@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Res,
@@ -12,6 +13,7 @@ import type { Response } from 'express';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { PlayersService } from './players.service';
 import { UpdatePlayerDto } from './dto/update-player.dto';
+import { UpdatePlayerConditionDto } from './dto/update-player-condition.dto';
 
 @Controller('players')
 export class PlayersController {
@@ -40,5 +42,13 @@ export class PlayersController {
   @Put(':id')
   update(@Param('id') id: string, @Body() dto: UpdatePlayerDto) {
     return this.playersService.update(id, dto);
+  }
+
+  @Patch(':id/condition')
+  updateCondition(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlayerConditionDto,
+  ) {
+    return this.playersService.updateCondition(id, dto);
   }
 }

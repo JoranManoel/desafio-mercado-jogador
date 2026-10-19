@@ -20,6 +20,7 @@ import type {
 } from './domain/player-calculation';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
+import { UpdatePlayerConditionDto } from './dto/update-player-condition.dto';
 
 @Injectable()
 export class PlayersService {
@@ -38,6 +39,17 @@ export class PlayersService {
     }
 
     return player;
+  }
+
+  private validateAgeAndAgility(
+    age: number,
+    agility: number,
+  ): void {
+    if (age >= 35 && agility > 85) {
+      throw new BadRequestException(
+        'Agilidade máxima para jogadores com 35 anos ou mais é 85.',
+      );
+    }
   }
 
   async create(dto: CreatePlayerDto) {
@@ -96,11 +108,7 @@ export class PlayersService {
     const current = await this.findActivePlayerOrThrow(id)
 
     // Validações que dependem de mais de um campo.
-    if (dto.age >= 35 && dto.agility > 85) {
-      throw new BadRequestException(
-        'Agilidade máxima para jogadores com 35 anos ou mais é 85.',
-      );
-    }
+    this.validateAgeAndAgility(dto.age, dto.agility)
 
     // Um jogador vinculado a clube não pode mudar de posição.
     if (
@@ -132,6 +140,46 @@ export class PlayersService {
     return this.toApiResponse(updated);
   }
 
+  async updateCondition(rawId: string, dto: UpdatePlayerConditionDto) {
+    const id = this.parseCanonicalId(rawId);
+
+    const current = await this.findActivePlayerOrThrow(id);
+    const condition = dto.condition;
+
+    // Reenviar a condição atual é permitido.
+    if (current.condition === condition) {
+      return this.toApiResponse(current);
+    }
+
+    // Não permite a transição direta de DOENTE para APTO.
+    if (
+      current.condition === 'DOENTE' &&
+      condition === 'APTO'
+    ) {
+      throw new ConflictException(
+        'Um jogador DOENTE não pode passar diretamente para APTO.',
+      );
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const player = await tx.player.update({
+        where: { id },
+        data: { condition },
+      });
+
+      // Se ficar DOENTE, remove sua titularidade atomicamente.
+      if (condition === 'DOENTE') {
+        await tx.lineup.deleteMany({
+          where: { playerId: id },
+        });
+      }
+
+      return player;
+    });
+
+    return this.toApiResponse(updated);
+  }
+
   private validateCrossFieldRules(dto: CreatePlayerDto): void {
     const attributes = [
       dto.pace,
@@ -148,11 +196,7 @@ export class PlayersService {
       0,
     );
 
-    if (dto.age >= 35 && dto.agility > 85) {
-      throw new BadRequestException(
-        'Agilidade máxima para jogadores com 35 anos ou mais é 85.',
-      );
-    }
+    this.validateAgeAndAgility(dto.age, dto.agility)
 
     if (sumAttributes > 480) {
       throw new BadRequestException(
