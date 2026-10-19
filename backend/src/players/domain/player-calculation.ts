@@ -117,3 +117,73 @@ export function formatMoney(cents: number): string {
 
   return `${whole}.${fraction}`;
 }
+
+export type PlayerCondition =
+  | 'APTO'
+  | 'MAL_CONDICIONADO'
+  | 'DOENTE';
+
+/**
+ * Converte um valor decimal com duas casas para centavos inteiros.
+ * Exemplo: "40.05" -> 4005.
+ */
+export function moneyToCents(value: string): number {
+  const [wholePart, fractionPart = ''] = value.split('.');
+
+  const whole = Number(wholePart);
+  const fraction = Number(
+    fractionPart.padEnd(2, '0').slice(0, 2),
+  );
+
+  return whole * 100 + fraction;
+}
+
+/**
+ * Calcula o valor de mercado em centavos.
+ * O resultado respeita o arredondamento monetário half-up
+ * e o valor mínimo de 1,00 moeda.
+ */
+export function calculateMarketValueCents(
+  baseValueCents: number,
+  condition: PlayerCondition,
+  agility: number,
+  age: number,
+): number {
+  let conditionDiscountTenths = 0;
+
+  if (condition === 'MAL_CONDICIONADO') {
+    conditionDiscountTenths = 150;
+  } else if (condition === 'DOENTE') {
+    conditionDiscountTenths = 300;
+  }
+
+  if (condition !== 'APTO') {
+    if (agility >= 80) {
+      conditionDiscountTenths /= 2;
+    } else if (agility <= 30) {
+      conditionDiscountTenths += 100;
+    }
+  }
+
+  let ageAdjustmentTenths = 0;
+
+  if (age <= 21) {
+    ageAdjustmentTenths = 100;
+  } else if (age >= 32) {
+    ageAdjustmentTenths = -100;
+  }
+
+  const totalRateTenths = Math.max(
+    -400,
+    ageAdjustmentTenths - conditionDiscountTenths,
+  );
+
+  // 1000 representa 100%; cada unidade representa 0,1%.
+  const factorTenths = 1000 + totalRateTenths;
+
+  const roundedCents = Math.floor(
+    (baseValueCents * factorTenths + 500) / 1000,
+  );
+
+  return Math.max(100, roundedCents);
+}
