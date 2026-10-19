@@ -22,6 +22,7 @@ import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
 import { UpdatePlayerConditionDto } from './dto/update-player-condition.dto';
 import { ListPlayersQueryDto } from './dto/list-players-query';
+import { normalizeSearchText } from '../common/utils/normalize-search-text';
 
 @Injectable()
 export class PlayersService {
@@ -93,7 +94,7 @@ export class PlayersService {
         );
       }
 
-      search = this.normalizeSearchText(query.search);
+      search = normalizeSearchText(query.search);
 
       if (!search) {
         throw new BadRequestException(
@@ -240,7 +241,7 @@ export class PlayersService {
       return {
         response,
         id: player.id,
-        nameKey: this.normalizeSearchText(player.name),
+        nameKey: normalizeSearchText(player.name),
         position: player.position,
         age: player.age,
         condition: player.condition,
@@ -565,7 +566,7 @@ export class PlayersService {
     return id;
   }
 
-  private toApiResponse(player: {
+  toApiResponse(player: {
     id: number;
     name: string;
     position: string;
@@ -624,15 +625,6 @@ export class PlayersService {
       ),
       club_id: player.clubId,
     };
-  }
-
-  private normalizeSearchText(value: string): string {
-    return value
-      .trim()
-      .replace(/\s+/g, ' ')
-      .normalize('NFD')
-      .replace(/\p{M}/gu, '')
-      .toLowerCase();
   }
 
   private parseIntegerQuery(

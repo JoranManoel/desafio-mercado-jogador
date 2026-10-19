@@ -8,5 +8,6 @@ import { PlayersService } from './players.service';
   imports: [PrismaModule],
   controllers: [PlayersController],
   providers: [PlayersService],
+  exports: [PlayersService]
 })
 export class PlayersModule {}
