@@ -10,22 +10,11 @@ import {
 } from 'class-validator';
 
 import type { PlayerPosition } from '../domain/player-calculation';
+import { normalizePlayerName } from '../utils/normalize-player-name';
 
-function normalizeName(value: unknown): unknown {
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  // Não escondemos caracteres de controle ao aplicar trim.
-  if (/[\p{Cc}\p{Cf}]/u.test(value)) {
-    return value;
-  }
-
-  return value.trim().replace(/ {2,}/g, ' ');
-}
 
 export class CreatePlayerDto {
-  @Transform(({ value }) => normalizeName(value))
+  @Transform(({ value }) => normalizePlayerName(value))
   @IsString()
   @Length(3, 100)
   @Matches(/^[^\p{Cc}\p{Cf}]*$/u, {

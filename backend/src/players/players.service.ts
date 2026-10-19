@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -18,10 +19,26 @@ import type {
   PlayerPosition,
 } from './domain/player-calculation';
 import { CreatePlayerDto } from './dto/create-player.dto';
+import { UpdatePlayerDto } from './dto/update-player.dto';
 
 @Injectable()
 export class PlayersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
+
+  private async findActivePlayerOrThrow(id: number) {
+    const player = await this.prisma.player.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+    });
+
+    if (!player) {
+      throw new NotFoundException('Jogador não encontrado.');
+    }
+
+    return player;
+  }
 
   async create(dto: CreatePlayerDto) {
     this.validateCrossFieldRules(dto);
@@ -68,18 +85,51 @@ export class PlayersService {
   async findOne(rawId: string) {
     const id = this.parseCanonicalId(rawId);
 
-    const player = await this.prisma.player.findFirst({
-      where: {
-        id,
-        deletedAt: null,
+    const player = await this.findActivePlayerOrThrow(id);
+
+    return this.toApiResponse(player);
+  }
+
+  async update(rawId: string, dto: UpdatePlayerDto) {
+    const id = this.parseCanonicalId(rawId);
+
+    const current = await this.findActivePlayerOrThrow(id)
+
+    // Validações que dependem de mais de um campo.
+    if (dto.age >= 35 && dto.agility > 85) {
+      throw new BadRequestException(
+        'Agilidade máxima para jogadores com 35 anos ou mais é 85.',
+      );
+    }
+
+    // Um jogador vinculado a clube não pode mudar de posição.
+    if (
+      current.clubId !== null &&
+      current.position !== dto.position
+    ) {
+      throw new ConflictException(
+        'Não é possível mudar a posição de um jogador que pertence a um clube.',
+      );
+    }
+
+    // A idade nunca pode diminuir.
+    if (dto.age < current.age) {
+      throw new ConflictException(
+        'A idade do jogador não pode ser reduzida.',
+      );
+    }
+
+    const updated = await this.prisma.player.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        position: dto.position,
+        agility: dto.agility,
+        age: dto.age,
       },
     });
 
-    if (!player) {
-      throw new NotFoundException('Jogador não encontrado.');
-    }
-
-    return this.toApiResponse(player);
+    return this.toApiResponse(updated);
   }
 
   private validateCrossFieldRules(dto: CreatePlayerDto): void {
