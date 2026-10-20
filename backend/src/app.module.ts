@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { PlayersModule } from './players/players.module';
 import { ClubsModule } from './clubs/clubs.module';
+import { MarketModule } from './market/market.module';
 
 @Module({
   imports: [
@@ -12,7 +13,8 @@ import { ClubsModule } from './clubs/clubs.module';
     }),
     PrismaModule,
     PlayersModule,
-    ClubsModule
+    ClubsModule,
+    MarketModule
   ],
 })
 export class AppModule {}
