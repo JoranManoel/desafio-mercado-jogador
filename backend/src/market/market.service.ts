@@ -18,7 +18,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class MarketService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async buy(rawPlayerId: string, dto: BuyPlayerDto) {
     const playerId = this.parseCanonicalId(rawPlayerId);
@@ -117,8 +117,8 @@ export class MarketService {
         const feeCents =
           marketValueCents > 3000
             ? Math.floor(
-                (marketValueCents * 5 + 50) / 100,
-              )
+              (marketValueCents * 5 + 50) / 100,
+            )
             : 0;
 
         const totalCostCents =
@@ -300,6 +300,241 @@ export class MarketService {
     }
 
     return new Date(value);
+  }
+
+
+  async sell(rawPlayerId: string) {
+    const playerId = this.parseCanonicalId(rawPlayerId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+
+      // 1. O jogador precisa existir e estar ativo.
+      const player = await tx.player.findFirst({
+        where: {
+          id: playerId,
+          deletedAt: null,
+        },
+      });
+
+      if (!player) {
+        throw new NotFoundException('Jogador não encontrado.');
+      }
+
+      // 2. Um jogador livre não pode ser vendido.
+      if (player.clubId === null) {
+        throw new ConflictException(
+          'O jogador está livre e não pode ser vendido.',
+        );
+      }
+
+      const club = await tx.club.findUnique({
+        where: { id: player.clubId },
+      });
+
+      if (!club) {
+        throw new NotFoundException('Clube não encontrado.');
+      }
+
+      // 3. Recupera o contrato ativo da compra.
+      const contract = await tx.contract.findFirst({
+        where: {
+          playerId: player.id,
+          clubId: club.id,
+          status: 'ATIVO',
+        },
+      });
+
+      if (!contract) {
+        throw new ConflictException(
+          'Não existe contrato ativo para este jogador neste clube.',
+        );
+      }
+
+      const marketValueCents = calculateMarketValueCents(
+        moneyToCents(player.baseValue.toFixed(2)),
+        player.condition as PlayerCondition,
+        player.agility,
+        player.age,
+      );
+
+      const purchaseValueCents = moneyToCents(
+        contract.purchaseValue.toFixed(2),
+      );
+
+      // 4. Os dias são arredondados para cima.
+      const remainingDays = Math.max(
+        0,
+        Math.ceil(
+          (contract.loyaltyUntil.getTime() - now.getTime()) /
+          DAY_MS,
+        ),
+      );
+
+      // 5. Determina o percentual de multa.
+      let penaltyRate = 0;
+
+      if (remainingDays >= 181) {
+        penaltyRate = 20;
+      } else if (remainingDays >= 31) {
+        penaltyRate = 10;
+      } else if (remainingDays >= 1) {
+        penaltyRate = 5;
+      }
+
+      // Arredonda a multa em centavos e aplica o teto de 10,00.
+      const calculatedPenaltyCents = Math.floor(
+        (marketValueCents * penaltyRate + 50) / 100,
+      );
+
+      const penaltyCents = Math.min(
+        1000,
+        calculatedPenaltyCents,
+      );
+
+      // 6. O lucro pode ser negativo, zero ou positivo.
+      const profitCents =
+        marketValueCents - purchaseValueCents;
+
+      // A comissão só incide sobre o lucro positivo:
+      // 10% da primeira faixa de 10,00; 20% do excedente.
+      const positiveProfitCents = Math.max(0, profitCents);
+
+      const firstBracketCents = Math.min(
+        positiveProfitCents,
+        1000,
+      );
+
+      const secondBracketCents = Math.max(
+        positiveProfitCents - 1000,
+        0,
+      );
+
+      // Calcula a comissão total e arredonda apenas o resultado.
+      const feeCents = Math.floor(
+        (
+          firstBracketCents * 10 +
+          secondBracketCents * 20 +
+          50
+        ) / 100,
+      );
+
+      // 7. Calcula o crédito e o novo caixa.
+      const cashChangeCents =
+        marketValueCents - penaltyCents - feeCents;
+
+      const currentCashCents = moneyToCents(
+        club.cash.toFixed(2),
+      );
+
+      const newCashCents =
+        currentCashCents + cashChangeCents;
+
+      // 8. Retira o jogador do clube de forma condicional.
+      // Se outra operação já o tiver transferido, abortamos.
+      const unlinkedPlayer = await tx.player.updateMany({
+        where: {
+          id: player.id,
+          clubId: club.id,
+          deletedAt: null,
+        },
+        data: {
+          clubId: null,
+        },
+      });
+
+      if (unlinkedPlayer.count !== 1) {
+        throw new ConflictException(
+          'O jogador não pertence mais a este clube.',
+        );
+      }
+
+      // 9. Encerra o contrato ativo.
+      const contractStatus =
+        penaltyCents > 0 ? 'RESCINDIDO' : 'ENCERRADO';
+
+      const closedContract = await tx.contract.updateMany({
+        where: {
+          id: contract.id,
+          status: 'ATIVO',
+        },
+        data: {
+          status: contractStatus,
+          endedAt: now,
+        },
+      });
+
+      if (closedContract.count !== 1) {
+        throw new ConflictException(
+          'O contrato já foi encerrado.',
+        );
+      }
+
+      // 10. Se era titular, remove-o da escalação.
+      await tx.lineup.deleteMany({
+        where: {
+          playerId: player.id,
+          clubId: club.id,
+        },
+      });
+
+      // 11. Atualiza o caixa apenas se não tiver mudado.
+      const updatedClub = await tx.club.updateMany({
+        where: {
+          id: club.id,
+          cash: club.cash,
+        },
+        data: {
+          cash: formatMoney(newCashCents),
+        },
+      });
+
+      if (updatedClub.count !== 1) {
+        throw new ConflictException(
+          'O caixa do clube mudou durante a venda. Atualize os dados e tente novamente.',
+        );
+      }
+
+      // 12. Registra o snapshot financeiro da venda.
+      const transaction = await tx.transaction.create({
+        data: {
+          clubId: club.id,
+          playerId: player.id,
+          playerName: player.name,
+          type: 'VENDA',
+          value: formatMoney(marketValueCents),
+          fee: formatMoney(feeCents),
+          penalty: formatMoney(penaltyCents),
+          profit: this.formatSignedMoney(profitCents),
+          cashChange: formatMoney(cashChangeCents),
+          createdAt: now,
+        },
+      });
+
+      // 13. Devolve os campos exigidos pela API.
+      return {
+        id: transaction.id,
+        club_id: club.id,
+        player_id: player.id,
+        player_name: player.name,
+        type: 'VENDA',
+        value: Number(formatMoney(marketValueCents)),
+        fee: Number(formatMoney(feeCents)),
+        penalty: Number(formatMoney(penaltyCents)),
+        profit: Number(this.formatSignedMoney(profitCents)),
+        cash_change: Number(formatMoney(cashChangeCents)),
+        created_at: this.formatBrasiliaTimestamp(
+          transaction.createdAt,
+        ),
+        purchase_value: Number(
+          contract.purchaseValue.toFixed(2),
+        ),
+        remaining_days: remainingDays,
+        penalty_rate: penaltyRate,
+        contract_status: contractStatus,
+        club_cash: Number(formatMoney(newCashCents)),
+      };
+    });
   }
 
   private formatSignedMoney(cents: number): string {
