@@ -1,20 +1,28 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { getPlayers, type Player as ApiPlayer } from './services/players.service'
 import {
   Activity,
+  CalendarClock,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Coins,
+  Eye,
   HeartPulse,
   MoreHorizontal,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
   Shield,
   ShoppingCart,
+  Tag,
+  TriangleAlert,
   Trophy,
+  Trash2,
+  TrendingUp,
   User,
   Users,
   Shirt,
@@ -27,8 +35,16 @@ import {
   ServerOff,
 } from 'lucide-react'
 import './App.css'
-import { getClubs, type Club } from './services/clubs.service'
+import { getClubLineup, getClubs, type Club } from './services/clubs.service'
+import {
+  buyPlayer,
+  deletePlayer,
+  updatePlayer,
+  updatePlayerCondition,
+  type PlayerCondition,
+} from './services/players.service'
 import HomeScreen from './components/HomeScreen'
+import NewPlayerScreen from './components/NewPlayerScreen'
 
 
 type Player = {
@@ -40,11 +56,30 @@ type Player = {
   agility: number
   age: number
   condition: 'Apto' | 'Mal condicionado' | 'Doente'
+  apiCondition: ApiPlayer['condition']
   baseValue: number
   marketValue: number
   club: string | null
+  clubId: number | null
   acronym: string | null
+  pace: number
+  shooting: number
+  passing: number
+  dribbling: number
+  defending: number
+  physical: number
+  potential: number
 }
+
+type PlayerAction = 'details' | 'edit' | 'condition' | 'buy' | 'delete'
+
+const POSITION_OPTIONS: { value: Player['position']; label: string }[] = [
+  { value: 'GOL', label: 'Goleiro' },
+  { value: 'ZAG', label: 'Zagueiro' },
+  { value: 'LAT', label: 'Lateral' },
+  { value: 'MEI', label: 'Meio-campo' },
+  { value: 'ATA', label: 'Atacante' },
+]
 
 const positionNames: Record<Player['position'], string> = {
   GOL: 'Goleiro',
@@ -73,10 +108,19 @@ function mapApiPlayer(player: ApiPlayer, clubs: Club[]): Player {
     agility: player.agility,
     age: player.age,
     condition: conditionNames[player.condition],
+    apiCondition: player.condition,
     baseValue: player.base_value,
     marketValue: player.market_value,
     club: playerClub?.name ?? null,
+    clubId: player.club_id,
     acronym: playerClub?.acronym ?? null,
+    pace: player.pace,
+    shooting: player.shooting,
+    passing: player.passing,
+    dribbling: player.dribbling,
+    defending: player.defending,
+    physical: player.physical,
+    potential: player.potential,
   }
 }
 
@@ -103,7 +147,7 @@ function App() {
 
       setClubs(clubsResponse)
       setPlayers(
-        playersResponse.data.map((player) =>
+        playersResponse.map((player) =>
           mapApiPlayer(player, clubsResponse),
         ),
       )
@@ -132,6 +176,10 @@ function App() {
   const [tab, setTab] = useState<'Todos' | 'Livres' | 'Em clubes'>('Todos')
   const [sort, setSort] = useState('name')
   const [page, setPage] = useState(1)
+  const [actionDialog, setActionDialog] = useState<{
+    action: PlayerAction
+    player: Player
+  } | null>(null)
   const [activeSection, setActiveSection] = useState('Início')
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
@@ -200,7 +248,7 @@ function App() {
 
           <div className="nav-label">Mercado</div>
           <nav className="nav-list">
-            <button className={activeSection === 'Jogadores' ? 'nav-item active' : 'nav-item'} onClick={() => changeSection('Jogadores')}>
+            <button className={activeSection === 'Jogadores' || activeSection === 'Novo jogador' ? 'nav-item active' : 'nav-item'} onClick={() => changeSection('Jogadores')}>
               <Users size={16} /> <span>Jogadores</span><small>{filteredPlayers.length}</small>
             </button>
             <button className={activeSection === 'Clubes' ? 'nav-item active' : 'nav-item'} onClick={() => changeSection('Clubes')}>
@@ -258,7 +306,9 @@ function App() {
             <button className="icon-button" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Alternar menu">
               {sidebarOpen ? <PanelLeft size={17} /> : <X size={17} />}
             </button>
-            <span>Mercado</span><ChevronRight size={14} /><strong>{activeSection}</strong>
+            <span>Mercado</span>
+            <ChevronRight size={14} />
+            <strong>{activeSection === 'Novo jogador' ? 'Jogadores' : activeSection}</strong>
           </div>
           <button
             className="icon-button"
@@ -271,7 +321,7 @@ function App() {
         </header>
 
         <div className="page-content">
-          {activeSection === 'Jogadores' ? (
+          {activeSection === 'Jogadores' || activeSection === 'Novo jogador' ? (
             <>
               <div className="page-heading">
                 <div className="heading-icon"><Users size={22} /></div>
@@ -279,7 +329,7 @@ function App() {
                   <h1>Jogadores</h1>
                   <p>Cadastre jogadores, acompanhe os indicadores e compre os que estão livres.</p>
                 </div>
-                <button className="primary-button" onClick={() => window.alert('O formulário de cadastro será implementado na próxima etapa.')}>
+                <button className="primary-button" onClick={() => changeSection('Novo jogador')}>
                   <Plus size={16} /> Novo jogador
                 </button>
               </div>
@@ -437,10 +487,12 @@ function App() {
                             {player.club ? <a className="club-link" href="#club" onClick={(event) => { event.preventDefault(); changeSection(player.club!) }}><span>{player.acronym}</span>{player.club}</a> : <span className="free-badge">Livre</span>}
                           </td>
                           <td>
-                            <div className="row-actions">
-                              {!player.club && <button className="buy-button" onClick={() => window.alert(`A compra de ${player.name} será implementada na próxima etapa.`)}><ShoppingCart size={13} /> Comprar</button>}
-                              <button className="icon-button tiny" aria-label={`Mais ações para ${player.name}`} onClick={() => window.alert(`Ações de ${player.name} serão implementadas na próxima etapa.`)}><MoreHorizontal size={17} /></button>
-                            </div>
+                            <PlayerActions
+                              player={player}
+                              canBuy={!player.club}
+                              canDelete={!player.club}
+                              onSelect={(action) => setActionDialog({ action, player })}
+                            />
                           </td>
                         </tr>
                       ))}
@@ -471,9 +523,407 @@ function App() {
             </section>
           )}
         </div>
+        {activeSection === 'Novo jogador' && (
+          <NewPlayerScreen
+            onCancel={() => changeSection('Jogadores')}
+            onCreated={async () => {
+              await loadPlayers()
+            }}
+            onViewDetails={(createdPlayer) => {
+              setActionDialog({ action: 'details', player: mapApiPlayer(createdPlayer, clubs) })
+              changeSection('Jogadores')
+            }}
+          />
+        )}
+        {actionDialog && (
+          <PlayerActionDialog
+            key={`${actionDialog.action}-${actionDialog.player.id}`}
+            action={actionDialog.action}
+            player={actionDialog.player}
+            clubs={clubs}
+            onClose={() => setActionDialog(null)}
+            onSelectAction={(action) => setActionDialog({ action, player: actionDialog.player })}
+            onComplete={async () => {
+              setActionDialog(null)
+              setPage(1)
+              await loadPlayers()
+            }}
+          />
+        )}
       </main>
     </div>
   )
 }
 
 export default App
+
+type PlayerActionsProps = {
+  player: Player
+  canBuy: boolean
+  canDelete: boolean
+  onSelect: (action: PlayerAction) => void
+}
+
+function PlayerActions({ player, canBuy, canDelete, onSelect }: PlayerActionsProps) {
+  const [open, setOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
+  const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    function dismiss(event: PointerEvent) {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) return
+      setOpen(false)
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', dismiss)
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', dismiss)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  function toggleMenu() {
+    if (open) {
+      setOpen(false)
+      return
+    }
+
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (!rect) return
+
+    const width = 184
+    const height = 220
+    const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))
+    const below = rect.bottom + 4
+    const top = below + height <= window.innerHeight - 8
+      ? below
+      : Math.max(8, rect.top - height - 4)
+
+    setMenuPosition({ top, left })
+    setOpen(true)
+  }
+
+  function select(action: PlayerAction) {
+    setOpen(false)
+    onSelect(action)
+  }
+
+  return (
+    <div className="row-actions">
+      {!player.club && (
+        <button className="buy-button" onClick={() => select('buy')}>
+          <ShoppingCart size={13} /> Comprar
+        </button>
+      )}
+      <button
+        ref={triggerRef}
+        className="icon-button tiny"
+        aria-label={`Mais ações para ${player.name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={toggleMenu}
+      >
+        <MoreHorizontal size={17} />
+      </button>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          className="player-actions-menu"
+          role="menu"
+          style={{ top: menuPosition.top, left: menuPosition.left }}
+        >
+          <div className="player-actions-heading">{player.name}</div>
+          <button role="menuitem" onClick={() => select('details')}><Eye size={14} />Ver detalhes</button>
+          <button role="menuitem" onClick={() => select('edit')}><Pencil size={14} />Editar</button>
+          <button role="menuitem" onClick={() => select('condition')}><HeartPulse size={14} />Alterar condição</button>
+          <div className="player-actions-divider" />
+          <button role="menuitem" disabled={!canBuy} onClick={() => select('buy')}><ShoppingCart size={14} />Comprar</button>
+          <button className="player-action-danger" role="menuitem" disabled={!canDelete} onClick={() => select('delete')}><Trash2 size={14} />Excluir</button>
+          {!canDelete && <p>Disponível apenas para jogador livre.</p>}
+        </div>,
+        document.body,
+      )}
+    </div>
+  )
+}
+
+type PlayerActionDialogProps = {
+  action: PlayerAction
+  player: Player
+  clubs: Club[]
+  onClose: () => void
+  onSelectAction: (action: PlayerAction) => void
+  onComplete: () => Promise<void>
+}
+
+const CONDITION_OPTIONS: { value: PlayerCondition; label: string; description: string }[] = [
+  { value: 'APTO', label: 'Apto', description: 'Sem desconto por condição.' },
+  { value: 'MAL_CONDICIONADO', label: 'Mal condicionado', description: 'Desconto de 15%. Agilidade de 80 a 100 corta pela metade; de 1 a 30 soma 10 pontos.' },
+  { value: 'DOENTE', label: 'Doente', description: 'Desconto de 30%, com o mesmo ajuste de agilidade.' },
+]
+
+function defaultLoyaltyDate() {
+  const date = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`
+}
+
+function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, onComplete }: PlayerActionDialogProps) {
+  const [name, setName] = useState(player.name)
+  const [position, setPosition] = useState<Player['position']>(player.position)
+  const [age, setAge] = useState(player.age)
+  const [agility, setAgility] = useState(player.agility)
+  const [condition, setCondition] = useState<PlayerCondition>(player.apiCondition)
+  const [clubId, setClubId] = useState(clubs[0]?.id.toString() ?? '')
+  const [loyaltyUntil, setLoyaltyUntil] = useState(defaultLoyaltyDate)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [lineupStatus, setLineupStatus] = useState<boolean | 'error' | null>(null)
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !saving) onClose()
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [onClose, saving])
+
+  useEffect(() => {
+    if (action !== 'condition' || !player.clubId) return
+
+    let active = true
+    void getClubLineup(player.clubId)
+      .then((lineup) => {
+        if (active) setLineupStatus(lineup.players.some((entry) => entry.id === player.id))
+      })
+      .catch(() => {
+        if (active) setLineupStatus('error')
+      })
+
+    return () => {
+      active = false
+    }
+  }, [action, player.clubId, player.id])
+
+  const titles: Record<PlayerAction, string> = {
+    details: 'Detalhes do jogador',
+    edit: 'Editar jogador',
+    condition: 'Alterar condição física',
+    buy: 'Comprar jogador',
+    delete: 'Excluir jogador',
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setError(null)
+
+    try {
+      if (action === 'edit') {
+        await updatePlayer(player.id, { name, position, age, agility })
+      } else if (action === 'condition') {
+        await updatePlayerCondition(player.id, condition)
+      } else if (action === 'buy') {
+        if (!clubId) throw new Error('Selecione um clube para continuar.')
+        await buyPlayer(player.id, {
+          club_id: Number(clubId),
+          loyalty_until: `${loyaltyUntil}-03:00`,
+        })
+      } else if (action === 'delete') {
+        await deletePlayer(player.id)
+      }
+
+      await onComplete()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível concluir a ação.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return createPortal(
+    <div className={`player-dialog-backdrop ${action === 'details' ? 'player-details-backdrop' : ''}`} onMouseDown={(event) => {
+      if (event.target === event.currentTarget && !saving) onClose()
+    }}>
+      <section className={`player-action-dialog ${action === 'details' ? 'player-details-drawer' : ''} ${action === 'condition' ? 'player-condition-dialog' : ''}`} role="dialog" aria-modal="true" aria-labelledby="player-action-title">
+        {action === 'details' ? (
+          <header className="player-details-heading">
+            <span className="player-details-avatar">{player.name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span>
+            <div className="player-details-name">
+              <h2 id="player-action-title">{player.name}</h2>
+              <div>
+                <span className="position-pill">{player.position}</span>
+                <span className={`condition condition-${player.condition === 'Apto' ? 'fit' : player.condition === 'Doente' ? 'sick' : 'poor'}`}><i />{player.condition}</span>
+                <span className="free-badge">{player.club ?? 'Livre'}</span>
+              </div>
+            </div>
+            <button className="icon-button tiny" type="button" aria-label="Fechar" onClick={onClose} disabled={saving}><X size={16} /></button>
+          </header>
+        ) : (
+          <header>
+            <div>
+              <h2 id="player-action-title">{titles[action]}</h2>
+              <p>{action === 'condition' ? 'A condição muda o desconto do valor de mercado, recalculado ao salvar.' : player.name}</p>
+            </div>
+            <button className="icon-button tiny" type="button" aria-label="Fechar" onClick={onClose} disabled={saving}><X size={16} /></button>
+          </header>
+        )}
+
+        {action === 'details' ? (
+          <div className="player-detail-content">
+            <div className="player-detail-cards">
+              <article><span>Valor de mercado <Coins size={12} /></span><strong>{money(player.marketValue)}</strong><small>Calculado automaticamente</small></article>
+              <article><span>Valor base <Tag size={12} /></span><strong>{money(player.baseValue)}</strong><small>Calculado no cadastro</small></article>
+              <article><span>Overall <Activity size={12} /></span><strong>{player.overall}</strong><small>Calculado pela posição</small></article>
+              <article><span>Potencial <TrendingUp size={12} /></span><strong>{player.potential}</strong><small>Informado no cadastro</small></article>
+            </div>
+
+            <section className="player-detail-tech">
+              <header><h3>Indicadores técnicos</h3><small>Escala de 1 a 99</small></header>
+              <div className="player-detail-bars">
+                {[
+                  ['Velocidade', player.pace],
+                  ['Finalização', player.shooting],
+                  ['Passe', player.passing],
+                  ['Drible', player.dribbling],
+                  ['Defesa', player.defending],
+                  ['Físico', player.physical],
+                ].map(([label, value]) => (
+                  <div className="player-detail-bar-row" key={label}>
+                    <span>{label}</span>
+                    <div className="player-detail-bar"><i style={{ width: `${player.potential}%` }} /><b style={{ width: `${value}%` }} /></div>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <div className="player-detail-legend"><span><i />Valor do atributo</span><span><i />Até o potencial ({player.potential}), que nenhum atributo passa</span></div>
+            </section>
+
+            <dl className="player-detail-facts">
+              <div><dt>Idade</dt><dd>{player.age} anos</dd></div>
+              <div><dt>Agilidade</dt><dd>{player.agility}</dd></div>
+              <div><dt>Clube</dt><dd>{player.club ?? 'Livre'}</dd></div>
+            </dl>
+
+            <footer className="player-details-footer">
+              <button className="secondary-button" type="button" onClick={() => onSelectAction('edit')}><Pencil size={13} />Editar</button>
+              <button className="secondary-button" type="button" onClick={() => onSelectAction('condition')}><HeartPulse size={13} />Alterar condição</button>
+              {!player.club && <button className="primary-button" type="button" onClick={() => onSelectAction('buy')}><ShoppingCart size={13} />Comprar</button>}
+            </footer>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {action === 'condition' && (
+              <div className="player-condition-form">
+                <div className="player-condition-summary">
+                  <span className="player-details-avatar">{player.name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span>
+                  <div><strong>{player.name}</strong><small>{player.position} · {player.positionName} · {player.age} anos</small></div>
+                  <span className={`condition condition-${player.condition === 'Apto' ? 'fit' : player.condition === 'Doente' ? 'sick' : 'poor'}`}><i />{player.condition}</span>
+                </div>
+
+                <div className="player-condition-options" role="radiogroup" aria-label="Condição física">
+                  {CONDITION_OPTIONS.map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={condition === item.value}
+                      className={condition === item.value ? 'selected' : ''}
+                      disabled={player.apiCondition === 'DOENTE' && item.value === 'APTO'}
+                      onClick={() => setCondition(item.value)}
+                    >
+                      <span className="player-condition-radio"><i /></span>
+                      <span className="player-condition-option-copy">
+                        <strong>{item.label}</strong>
+                        {item.value === player.apiCondition && <small className="player-condition-current">Atual</small>}
+                        <small>{item.description}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {condition === 'DOENTE' && player.clubId && lineupStatus === null && <p className="player-lineup-check">Verificando escalação do clube...</p>}
+                {condition === 'DOENTE' && lineupStatus === true && (
+                  <div className="player-condition-warning">
+                    <TriangleAlert size={15} />
+                    <p><strong>{player.name} é titular</strong><span>Ao passar para Doente, ele sai da escalação. O {player.club} só volta a jogar partidas depois de escalar novos 5 titulares.</span></p>
+                  </div>
+                )}
+                {condition === 'DOENTE' && lineupStatus === 'error' && <p className="player-lineup-check">Não foi possível verificar se o jogador está na escalação.</p>}
+              </div>
+            )}
+            {action === 'edit' && (
+              <div className="player-action-fields">
+                <label>Nome<input required minLength={3} maxLength={100} value={name} onChange={(event) => setName(event.target.value)} /></label>
+                <label className="player-edit-position np-field">
+                  <span>Posição</span>
+                  <div className="np-positions" role="radiogroup" aria-label="Posição">
+                    {POSITION_OPTIONS.map((item) => (
+                      <button
+                        key={item.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={position === item.value}
+                        aria-label={`${item.value} ${item.label}`}
+                        className={position === item.value ? 'active' : ''}
+                        disabled={Boolean(player.club)}
+                        onClick={() => setPosition(item.value)}
+                      >
+                        <strong>{item.value}</strong>
+                        <small>{item.label}</small>
+                      </button>
+                    ))}
+                  </div>
+                </label>
+                <div className="player-action-field-row">
+                  <label>Idade<input type="number" min={player.age} max={45} value={age} onChange={(event) => setAge(Number(event.target.value))} /></label>
+                  <label>Agilidade<input type="number" min={1} max={age >= 35 ? 85 : 100} value={agility} onChange={(event) => setAgility(Number(event.target.value))} /></label>
+                </div>
+                {player.club && <small>A posição não pode ser alterada enquanto o jogador pertence a um clube.</small>}
+              </div>
+            )}
+            {action === 'buy' && (
+              <div className="player-action-fields">
+                <label>Clube<select required value={clubId} onChange={(event) => setClubId(event.target.value)}>
+                  <option value="">Selecione um clube</option>
+                  {clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}
+                </select></label>
+                <label><span><CalendarClock size={13} /> Fim da fidelidade</span><input required type="datetime-local" value={loyaltyUntil} onChange={(event) => setLoyaltyUntil(event.target.value)} /></label>
+                {clubs.length === 0 && <small>Nenhum clube disponível para a compra.</small>}
+              </div>
+            )}
+            {action === 'delete' && <p className="player-delete-copy">Tem certeza de que deseja excluir <strong>{player.name}</strong>? Esta ação remove o jogador do mercado.</p>}
+            {error && <p className="player-action-error" role="alert">{error}</p>}
+            <footer>
+              <button className="secondary-button" type="button" onClick={onClose} disabled={saving}>Cancelar</button>
+              <button className={action === 'delete' ? 'player-confirm-danger' : 'primary-button'} type="submit" disabled={saving || (action === 'buy' && clubs.length === 0)}>
+                {saving ? 'Salvando...' : action === 'delete' ? 'Excluir jogador' : action === 'buy' ? 'Confirmar compra' : action === 'condition' ? 'Salvar condição' : 'Salvar alterações'}
+              </button>
+            </footer>
+          </form>
+        )}
+      </section>
+    </div>,
+    document.body,
+  )
+}
