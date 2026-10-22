@@ -1,0 +1,389 @@
+.club-directory {
+  display: grid;
+  gap: 14px;
+  color: #20232a;
+}
+
+.club-directory-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.club-directory-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #9bbaff;
+  border-radius: 8px;
+  background: #eff5ff;
+  color: var(--blue);
+}
+
+.club-directory-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.club-directory-title h1 {
+  margin: 0;
+  color: #20232a;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.club-directory-title p {
+  margin: 3px 0 0;
+  color: #737783;
+  font-size: 9px;
+}
+
+.club-directory-heading > .primary-button {
+  min-height: 29px;
+  padding: 0 10px;
+  font-size: 9px;
+}
+
+.club-directory-panel {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.club-directory-toolbar {
+  display: flex;
+  min-height: 43px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 11px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.club-directory-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.club-directory-toolbar h2 {
+  margin: 0;
+  color: #252932;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.club-directory-toolbar > div > span {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f1f2f4;
+  color: #737783;
+  font-size: 7px;
+}
+
+.club-directory-sort {
+  display: flex;
+  min-width: 170px;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid #d7d9df;
+  border-radius: 6px;
+  color: #777c87;
+  background: #fff;
+  font-size: 8px;
+}
+
+.club-directory-sort > span {
+  color: #626772;
+  white-space: nowrap;
+}
+
+.club-directory-sort select {
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #353943;
+  font-size: 8px;
+  cursor: pointer;
+}
+
+.club-directory-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.club-directory-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.club-directory-table th {
+  height: 29px;
+  padding: 0 10px;
+  background: #fafafa;
+  color: #696e79;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.club-directory-table td {
+  height: 43px;
+  padding: 0 10px;
+  border-top: 1px solid #eceef1;
+  color: #353943;
+  font-size: 8px;
+}
+
+.club-directory-table tbody tr {
+  cursor: pointer;
+}
+
+.club-directory-table tbody tr:hover {
+  background: #f7faff;
+}
+
+.club-directory-table td > small {
+  color: #777c87;
+  font-size: 7px;
+}
+
+.club-directory-identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.club-directory-identity > span {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #e4e6eb;
+  border-radius: 6px;
+  background: #f8f9fb;
+  color: #464b56;
+  font-size: 7px;
+  font-weight: 600;
+}
+
+.club-directory-identity > div {
+  display: grid;
+  gap: 2px;
+}
+
+.club-directory-identity strong {
+  color: #272b33;
+  font-size: 9px;
+  font-weight: 550;
+}
+
+.club-directory-identity small {
+  color: #777c87;
+  font-size: 7px;
+}
+
+.club-roster-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #565b66;
+}
+
+.club-directory-worth {
+  color: #252932 !important;
+  font-weight: 650;
+}
+
+.club-directory-club-name {
+  color: #272b33;
+  font-size: 9px;
+  font-weight: 550;
+}
+
+.club-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: #252932;
+  font-size: 8px;
+}
+
+.club-open-link:hover {
+  color: var(--blue);
+}
+
+.club-directory-error,
+.club-directory-limit {
+  margin: 0;
+  padding: 9px 11px;
+  color: #b42318;
+  font-size: 8px;
+}
+
+.club-directory-limit {
+  border-top: 1px solid #eceef1;
+  color: #777c87;
+}
+
+.club-directory-empty {
+  margin: 0;
+  padding: 30px 12px;
+  color: #777c87;
+  font-size: 9px;
+  text-align: center;
+}
+
+.club-create-dialog {
+  width: min(350px, 100%);
+}
+
+.club-create-dialog > header {
+  margin-bottom: 14px;
+}
+
+.club-create-dialog > header h2 {
+  font-size: 14px;
+}
+
+.club-create-dialog > header p {
+  font-size: 9px;
+}
+
+.club-create-dialog form {
+  gap: 10px;
+}
+
+.club-create-fields {
+  display: grid;
+  gap: 11px;
+  color: #3c4049;
+  font-size: 9px;
+}
+
+.club-create-fields label {
+  display: grid;
+  gap: 4px;
+}
+
+.club-create-input,
+.club-create-acronym {
+  display: flex;
+  width: 100%;
+  height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid #c9cbd1;
+  border-radius: 6px;
+  background: #fff;
+  color: #272b33;
+}
+
+.club-create-input:focus-within,
+.club-create-acronym:focus-within {
+  border-color: #6f98ff;
+  outline: 2px solid #d8e4ff;
+}
+
+.club-create-input svg {
+  flex: 0 0 auto;
+  color: #737783;
+}
+
+.club-create-fields input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #272b33;
+  font-size: 9px;
+}
+
+.club-create-input.has-error,
+.club-create-acronym.has-error {
+  border-color: #e11919;
+  outline: 2px solid #ffe4e4;
+}
+
+.club-create-fields small {
+  color: #777c87;
+  font-size: 7px;
+  line-height: 1.35;
+}
+
+.club-create-error {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #ffc9c9;
+  border-radius: 6px;
+  background: #fff4f4;
+  color: #e11919;
+}
+
+.club-create-error strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 8px;
+  font-weight: 550;
+}
+
+.club-create-error p {
+  margin: 0;
+  color: #b42318;
+  font-size: 7px;
+  line-height: 1.35;
+}
+
+.club-create-cash-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 7px;
+  border: 1px solid #e7e9ed;
+  border-radius: 6px;
+  background: #fafafa;
+  color: #737783;
+  font-size: 7px;
+}
+
+.club-create-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid #eceef1;
+}
+
+.club-create-dialog footer button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 9px;
+}
+
+@media (max-width: 700px) {
+  .club-directory-toolbar { align-items: center; }
+  .club-directory-sort { min-width: 152px; }
+  .club-directory-heading { flex-wrap: wrap; }
+  .club-directory-title { flex-basis: calc(100% - 46px); }
+  .club-directory-heading > .primary-button { margin-left: 45px; }
+}

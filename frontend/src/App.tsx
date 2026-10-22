@@ -50,6 +50,8 @@ import {
 } from './services/players.service'
 import HomeScreen from './components/HomeScreen'
 import NewPlayerScreen from './components/NewPlayerScreen'
+import ClubScreen from './components/ClubScreen'
+import ClubDirectoryScreen from './components/ClubDirectoryScreen'
 
 
 type Player = {
@@ -225,6 +227,8 @@ function App() {
     )),
   ].sort()
 
+  const activeClub = clubs.find((item) => item.name === activeSection)
+
   const pageSize = 10
   const totalPages = Math.max(1, Math.ceil(filteredPlayers.length / pageSize))
   const visiblePlayers = filteredPlayers.slice((page - 1) * pageSize, page * pageSize)
@@ -286,7 +290,7 @@ function App() {
               <button
                 key={club.id}
                 onClick={() => changeSection(club.name)}
-                className="club-item"
+                className={activeSection === club.name ? 'club-item active' : 'club-item'}
               >
                 <span className="club-avatar">{club.acronym}</span>
                 {club.name}
@@ -317,9 +321,27 @@ function App() {
             <button className="icon-button" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Alternar menu">
               {sidebarOpen ? <PanelLeft size={17} /> : <X size={17} />}
             </button>
-            <span>Mercado</span>
-            <ChevronRight size={14} />
-            <strong>{activeSection === 'Novo jogador' ? 'Jogadores' : activeSection}</strong>
+            {activeClub ? (
+              <>
+                <button className="crumb-link" onClick={() => changeSection('Jogadores')}>Mercado</button>
+                <ChevronRight size={14} />
+                <button className="crumb-link" onClick={() => changeSection('Clubes')}>Clubes</button>
+                <ChevronRight size={14} />
+                <strong>{activeClub.name}</strong>
+              </>
+            ) : ['Partidas', 'Classificação'].includes(activeSection) ? (
+              <>
+                <button className="crumb-link" onClick={() => changeSection('Início')}>Liga</button>
+                <ChevronRight size={14} />
+                <strong>{activeSection}</strong>
+              </>
+            ) : (
+              <>
+                <span>Mercado</span>
+                <ChevronRight size={14} />
+                <strong>{activeSection === 'Novo jogador' ? 'Jogadores' : activeSection}</strong>
+              </>
+            )}
           </div>
           <button
             className="icon-button"
@@ -525,6 +547,27 @@ function App() {
               </section>
               <p className="page-note">Overall e valor de mercado são calculados a cada consulta. A busca ignora maiúsculas, minúsculas e acentos.</p>
             </>
+          ) : activeSection === 'Clubes' ? (
+            <ClubDirectoryScreen
+              clubs={clubs}
+              loading={loading}
+              error={error}
+              onCreated={loadPlayers}
+              onSelectClub={changeSection}
+              onToast={setToast}
+            />
+          ) : activeClub ? (
+            <ClubScreen
+              club={activeClub}
+              players={players}
+              onBuyPlayers={() => {
+                setClub('')
+                setTab('Livres')
+                setPage(1)
+                changeSection('Jogadores')
+              }}
+              onToast={(message) => setToast(message)}
+            />
           ) : (
             <section className="placeholder-page">
               <div className="heading-icon"><Shield size={22} /></div>
