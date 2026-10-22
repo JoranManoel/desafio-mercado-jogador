@@ -5,6 +5,18 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const frontendOrigin = process.env.FRONTEND_ORIGIN;
+
+  if (!frontendOrigin) {
+    throw new Error('A variável FRONTEND_ORIGIN precisa estar configurada.');
+  }
+
+  app.enableCors({
+    origin: frontendOrigin,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type'],
+  });
+
   // Prefixo exigido pelo enunciado
   app.setGlobalPrefix('api/v1');
 
