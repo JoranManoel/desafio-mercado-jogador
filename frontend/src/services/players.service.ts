@@ -57,6 +57,26 @@ export type BuyPlayerPayload = {
   loyalty_until: string
 }
 
+export type BuyPlayerResponse = {
+  id: number
+  club_id: number
+  player_id: number
+  player_name: string
+  type: 'COMPRA'
+  value: number
+  fee: number
+  penalty: number
+  profit: number | null
+  cash_change: number
+  created_at: string
+  contract: {
+    purchase_value: number
+    loyalty_until: string
+    status: string
+  }
+  club_cash: number
+}
+
 async function readApiError(response: Response, fallback: string) {
   try {
     const body = (await response.json()) as { message?: string | string[] }
@@ -176,7 +196,7 @@ export async function deletePlayer(id: number): Promise<void> {
   }
 }
 
-export async function buyPlayer(id: number, payload: BuyPlayerPayload): Promise<void> {
+export async function buyPlayer(id: number, payload: BuyPlayerPayload): Promise<BuyPlayerResponse> {
   const response = await fetch(`${API_URL}/players/${id}/buy`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -191,4 +211,6 @@ export async function buyPlayer(id: number, payload: BuyPlayerPayload): Promise<
       ),
     )
   }
+
+  return response.json() as Promise<BuyPlayerResponse>
 }

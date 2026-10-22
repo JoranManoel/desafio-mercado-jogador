@@ -146,6 +146,7 @@
   color: var(--blue);
 }
 
+.np-positions button.active strong,
 .np-positions button.active small {
   color: #4d6fd6;
 }
@@ -794,6 +795,16 @@
   border: 1px solid #e7e9ed;
   border-radius: 7px;
   overflow: hidden;
+}
+
+.np-success-baseValue {
+  background: #f4f5f7;
+}
+.np-success-baseValue dt strong,
+.np-success-baseValue dd {
+  font-size: 11px !important;
+  color: #000 !important;
+  font-weight: bolder !important;
 }
 
 .np-success-values > div {

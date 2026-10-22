@@ -50,7 +50,7 @@ function parseAttribute(value: string, min: number, max: number) {
 }
 
 export default function NewPlayerScreen({ onCancel, onCreated, onViewDetails }: NewPlayerScreenProps) {
-  const [name, setName] = useState('Davi Melo')
+  const [name, setName] = useState('')
   const [position, setPosition] = useState<PlayerPosition>('MEI')
   const [age, setAge] = useState(23)
   const [agility, setAgility] = useState(70)
@@ -180,7 +180,7 @@ export default function NewPlayerScreen({ onCancel, onCreated, onViewDetails }: 
             {createdPlayer.name} entrou livre e Apto. Valores em moedas, calculados pela API ao salvar.
           </p>
           <dl className="np-success-values">
-            <div><dt><strong>Valor base</strong><small>Calculado no cadastro; não muda depois</small></dt><dd>{createdMoney(createdPlayer.base_value)}</dd></div>
+            <div className='np-success-baseValue'><dt><strong>Valor base</strong><small>Calculado no cadastro; não muda depois</small></dt><dd>{createdMoney(createdPlayer.base_value)}</dd></div>
             <div><dt><strong>Valor de mercado</strong><small>Com condição, agilidade e idade</small></dt><dd>{createdMoney(createdPlayer.market_value)}</dd></div>
             <div><dt><strong>Overall</strong><small>Pelos pesos da posição {POSITIONS.find((item) => item.value === createdPlayer.position)?.label}</small></dt><dd>{createdPlayer.overall}</dd></div>
           </dl>
@@ -223,6 +223,7 @@ export default function NewPlayerScreen({ onCancel, onCreated, onViewDetails }: 
                 <input
                   type="text"
                   value={name}
+                  placeholder="EX: Davi Melo"
                   onChange={(event) => setName(event.target.value)}
                   maxLength={100}
                   autoComplete="off"
