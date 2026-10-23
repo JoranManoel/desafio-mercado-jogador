@@ -41,18 +41,44 @@ npx prisma migrate reset --force
 
 ---
 
-## 3. 🚀 Passo a Passo para Instalar e Executar (Ubuntu 24.04 / Linux / Docker)
+## 3. 🚀 Passo a Passo para Instalar e Executar
 
-Todos os passos a seguir foram desenhados para reprodução direta no Ubuntu 24.04 com Docker.
+Todos os passos foram desenhados para reprodução direta no **Ubuntu 24.04 com Docker** (ambiente oficial da banca) e também em ambiente **Windows**.
 
-### 3.1. Clonar o repositório e preparar o banco
+---
+
+### 3.1. 🌟 Opção 1 (Principal e Recomendada): Execução Completa via Docker Compose (Comando Único)
+
+Esta é a opção mais rápida e robusta. Um único comando sobe o banco de dados PostgreSQL, aplica as migrações automaticamente no backend e inicia o frontend.
+
+Funciona de forma idêntica no **Linux (Ubuntu 24.04)**, **Windows** (PowerShell / CMD) ou **macOS**:
+
 ```bash
 # Na raiz do repositório
+docker compose up --build
+```
+
+- **Banco de Dados**: `localhost:5432`
+- **Origem da API**: `http://localhost:3000` (com endpoints em `/api/v1`)
+- **URL da Interface Web (Frontend)**: `http://localhost:5173`
+
+> 💡 **Nota**: O backend aguarda o PostgreSQL estar 100% pronto (*healthy*), executa automaticamente `npx prisma migrate deploy` aplicando as migrações do banco e, em seguida, inicia a API NestJS. O frontend fica disponível em seguida.
+
+---
+
+### 3.2. 🛠️ Opção 2: Execução Manual dos Serviços (Node.js Local + Docker no Banco)
+
+Caso deseje rodar a API e a interface diretamente no ambiente do host:
+
+#### 1. Iniciar o Banco de Dados (Linux / Windows)
+Na raiz do repositório:
+```bash
 docker compose up -d db
 ```
 
-### 3.2. Configurar e iniciar o Backend
-Em um terminal:
+#### 2. Configurar e iniciar o Backend
+
+**No Linux (Ubuntu 24.04):**
 ```bash
 cd backend
 cp .env.example .env
@@ -60,20 +86,38 @@ npm ci
 npx prisma migrate deploy
 npm run start:dev
 ```
-- **Origem da API**: `http://localhost:3000`  
-  *(A banca/cliente consome os endpoints com o prefixo `/api/v1`, ex.: `http://localhost:3000/api/v1/players`)*
 
-### 3.3. Configurar e iniciar o Frontend
-Em outro terminal:
+**No Windows (PowerShell):**
+```powershell
+cd backend
+Copy-Item .env.example .env
+npm ci
+npx prisma migrate deploy
+npm run start:dev
+```
+- **Origem da API**: `http://localhost:3000`  
+  *(A banca consome os endpoints adicionando `/api/v1`, ex.: `http://localhost:3000/api/v1/players`)*
+
+#### 3. Configurar e iniciar o Frontend (em outro terminal)
+
+**No Linux (Ubuntu 24.04):**
 ```bash
 cd frontend
 cp .env.example .env
 npm ci
 npm run dev
 ```
-- **URL da Interface Web**: `http://localhost:5173`
 
-*(Nota: os arquivos de trava `package-lock.json` de ambas as pastas estão rigorosamente versionados no repositório para garantir reprodutibilidade exata com `npm ci`)*.
+**No Windows (PowerShell):**
+```powershell
+cd frontend
+Copy-Item .env.example .env
+npm ci
+npm run dev
+```
+- **URL do Frontend**: `http://localhost:5173`
+
+*(Nota: os arquivos de trava `package-lock.json` estão rigorosamente versionados no repositório para garantir reprodutibilidade exata com `npm ci`)*.
 
 ---
 
@@ -164,6 +208,8 @@ Em estrito cumprimento ao item "Uso de inteligência artificial" do enunciado:
   - Apoio na auditoria de conformidade entre os requisitos descritos em `Orientações.md` e a implementação do código-fonte.
   - Refatoração dos parâmetros de ordenação e filtros nos serviços de jogadores e histórico de transações.
   - Implementação da suíte de testes automatizados com base nas tabelas oficiais de teste (RN02 a RN06).
+  - Ajustes no layout dos componentes do frontend.
+  - Colaboração no desenvolvimento das regras de negócio do backend
   - Correção na formatação do endpoint de exportação CSV (RN18) e ajuste de compatibilidade nos duelos das partidas.
 - **Como e por que foram utilizadas**: Para acelerar a identificação de discrepâncias contratuais da API em relação ao barema de avaliação e garantir qualidade e cobertura dos casos-limite de negócio.
 - **O que foi aceito, alterado ou descartado**:
@@ -180,7 +226,10 @@ Em estrito cumprimento ao item "Uso de inteligência artificial" do enunciado:
   cd backend
   npm test
   ```
-- **Ambiente Docker Reproduzível**: PostgreSQL configurado com volumes persistentes e healthchecks em `docker-compose.yaml`.
+- **Docker e Docker Compose**: Um único comando sobe interface, API e banco simultaneamente:
+  ```bash
+  docker compose up --build
+  ```
 - **Lint e Formatação**: Configurados tanto no backend quanto no frontend:
   ```bash
   cd backend && npm run lint
