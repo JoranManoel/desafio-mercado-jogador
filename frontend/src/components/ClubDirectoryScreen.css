@@ -120,6 +120,37 @@
   overflow-x: auto;
 }
 
+.club-mark {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #e0e3e8;
+  border-radius: 6px;
+  background: #f7f8fa;
+  color: #353943;
+  font-size: 7px;
+  font-weight: 650;
+}
+
+.club-directory-table .club-directory-name-cell {
+  display: flex;
+  height: 43px;
+  align-items: center;
+  gap: 8px;
+}
+
+.club-directory-name-cell .club-directory-club-name {
+  line-height: 1.25;
+}
+
+.club-acronym-pill {
+  min-width: 30px;
+  padding: 3px 5px;
+  font-size: 8px;
+}
+
 .club-directory-table {
   width: 100%;
   border-collapse: collapse;

@@ -448,102 +448,123 @@ function App() {
                 </section>
               )}
               <section className="table-card">
-                <div className="table-toolbar">
-                  <div className="tabs">
-                    {(['Todos', 'Livres', 'Em clubes'] as const).map((item) => {
-                      const count = item === 'Todos' ? players.length : item === 'Livres' ? players.filter((player) => !player.club).length : players.filter((player) => player.club).length
-                      return (
-                        <button key={item} className={tab === item ? 'tab active' : 'tab'} onClick={() => { setTab(item); setPage(1) }}>
-                          {item} <span>{count}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <label className="sort-select">
-                    <ArrowUpDown size={14} />
-                    <span>Ordenar:</span>
-                    <select value={sort} onChange={(event) => setSort(event.target.value)}>
-                      <option value="name">nome</option>
-                      <option value="value">valor de mercado</option>
-                      <option value="overall">overall</option>
-                    </select><ChevronDown size={13} />
-                  </label>
-                </div>
+                {!loading && !error && visiblePlayers.length === 0 && <tr className='table-card table-card-body'>
+                  <td colSpan={10} className="empty-state">
+                    <SearchX size={22} />
+                    <strong>Nenhum jogador encontrado para "{search || 'a busca'}"</strong>
+                    <span>Confira a grafia ou tire alguns filtros. A busca ignora maiúsculas, minusculas e acentos.</span>
+                    <button aria-label="Limpar filtros" className="clear-filters empty-state" onClick={() => {
+                      setSearch('');
+                      setPosition('');
+                      setCondition('');
+                      setClub('');
+                      setAge('');
+                      setValueRange('');
+                    }}>
+                      <X size={9}/>
+                      Limpar filtros
+                    </button>
+                  </td>
+                </tr> || <tr className='table-card-body'>
 
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Jogador</th><th>Posição</th><th>Overall</th><th>Agilidade</th><th>Idade</th><th>Condição</th><th>Valor base</th><th>Valor de mercado</th><th>Clube</th><th aria-label="Ações"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading && (
-                        <tr>
-                          <td colSpan={10} className="empty-state">
-                            Carregando jogadores...
-                          </td>
-                        </tr>
-                      )}
-
-                      {!loading && error && (
-                        <tr>
-                          <td colSpan={10} className="empty-state">
-                            <ServerOff size={22} />
-                            <strong>Não foi possível carregar os jogadores</strong>
-                            <span style={{ margin: '10px 0' }}>{error}</span>
-                            <button className="secondary-button" onClick={() => void loadPlayers()}>
-                              <RefreshCw size={14} />
-                              Tentar de novo
+                    <div className="table-toolbar">
+                      <div className="tabs">
+                        {(['Todos', 'Livres', 'Em clubes'] as const).map((item) => {
+                          const count = item === 'Todos' ? players.length : item === 'Livres' ? players.filter((player) => !player.club).length : players.filter((player) => player.club).length
+                          return (
+                            <button key={item} className={tab === item ? 'tab active' : 'tab'} onClick={() => { setTab(item); setPage(1) }}>
+                              {item} <span>{count}</span>
                             </button>
-                          </td>
-                        </tr>
-                      )}
-                      {!loading && !error && visiblePlayers.map((player) => (
-                        <tr key={player.id}>
-                          <td>
-                            <div className="player-cell">
-                              <span className={`player-avatar avatar-${player.id % 6}`}>{player.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span>
-                              <div><strong>{player.name}</strong><small>{player.positionName}</small></div>
-                            </div>
-                          </td>
-                          <td><span className="position-pill">{player.position}</span></td>
-                          <td className="numeric strong">{player.overall}</td>
-                          <td>
-                            <div className="agility-cell"><span>{player.agility}</span><span className={`agility-bar agility-${player.agility >= 80 ? 'high' : player.agility <= 30 ? 'low' : 'medium'}`}><i style={{ width: `${player.agility}%` }} /></span></div>
-                          </td>
-                          <td className="numeric">{player.age}</td>
-                          <td><span className={`condition condition-${player.condition === 'Apto' ? 'fit' : player.condition === 'Doente' ? 'sick' : 'poor'}`}><i />{player.condition}</span></td>
-                          <td className="numeric muted">{money(player.baseValue)}</td>
-                          <td className="numeric strong">{money(player.marketValue)}</td>
-                          <td>
-                            {player.club ? <a className="club-link" href="#club" onClick={(event) => { event.preventDefault(); changeSection(player.club!) }}><span>{player.acronym}</span>{player.club}</a> : <span className="free-badge">Livre</span>}
-                          </td>
-                          <td>
-                            <PlayerActions
-                              player={player}
-                              canBuy={!player.club}
-                              canDelete={!player.club}
-                              onSelect={(action) => setActionDialog({ action, player })}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      {!loading && !error && visiblePlayers.length === 0 && <tr><td colSpan={10} className="empty-state"><SearchX size={22} /><strong>Nenhum jogador encontrado para "{search || 'a busca'}"</strong><span>Tente alterar os filtros ou a busca.</span></td></tr>}
-                    </tbody>
-                  </table>
-                </div>
+                          )
+                        })}
+                      </div>
+                      <label className="sort-select">
+                        <ArrowUpDown size={14} />
+                        <span>Ordenar:</span>
+                        <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                          <option value="name">nome</option>
+                          <option value="value">valor de mercado</option>
+                          <option value="overall">overall</option>
+                        </select><ChevronDown size={13} />
+                      </label>
+                    </div>
 
-                <footer className="table-footer">
-                  <span>Mostrando {filteredPlayers.length === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, filteredPlayers.length)} de {filteredPlayers.length} jogadores</span>
-                  <div className="pagination">
-                    <button disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft size={15} /> Anterior</button>
-                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((number) => (
-                      <button key={number} className={page === number ? 'current' : ''} onClick={() => setPage(number)}>{number}</button>
-                    ))}
-                    <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Próxima <ChevronRight size={15} /></button>
-                  </div>
-                </footer>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Jogador</th><th>Posição</th><th>Overall</th><th>Agilidade</th><th>Idade</th><th>Condição</th><th>Valor base</th><th>Valor de mercado</th><th>Clube</th><th aria-label="Ações"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {loading && (
+                            <tr>
+                              <td colSpan={10} className="empty-state">
+                                Carregando jogadores...
+                              </td>
+                            </tr>
+                          )}
+
+                          {!loading && error && (
+                            <tr>
+                              <td colSpan={10} className="empty-state">
+                                <ServerOff size={22} />
+                                <strong>Não foi possível carregar os jogadores</strong>
+                                <span style={{ margin: '10px 0' }}>{error}</span>
+                                <button className="secondary-button" onClick={() => void loadPlayers()}>
+                                  <RefreshCw size={14} />
+                                  Tentar de novo
+                                </button>
+                              </td>
+                            </tr>
+                          )}
+                          {!loading && !error && visiblePlayers.map((player) => (
+                            <tr key={player.id}>
+                              <td>
+                                <div className="player-cell">
+                                  <span className={`player-avatar avatar-${player.id % 6}`}>{player.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span>
+                                  <div><strong>{player.name}</strong><small>{player.positionName}</small></div>
+                                </div>
+                              </td>
+                              <td><span className="position-pill">{player.position}</span></td>
+                              <td className="numeric strong">{player.overall}</td>
+                              <td>
+                                <div className="agility-cell"><span>{player.agility}</span><span className={`agility-bar agility-${player.agility >= 80 ? 'high' : player.agility <= 30 ? 'low' : 'medium'}`}><i style={{ width: `${player.agility}%` }} /></span></div>
+                              </td>
+                              <td className="numeric">{player.age}</td>
+                              <td><span className={`condition condition-${player.condition === 'Apto' ? 'fit' : player.condition === 'Doente' ? 'sick' : 'poor'}`}><i />{player.condition}</span></td>
+                              <td className="numeric muted">{money(player.baseValue)}</td>
+                              <td className="numeric strong">{money(player.marketValue)}</td>
+                              <td>
+                                {player.club ? <a className="club-link" href="#club" onClick={(event) => { event.preventDefault(); changeSection(player.club!) }}><span>{player.acronym}</span>{player.club}</a> : <span className="free-badge">Livre</span>}
+                              </td>
+                              <td>
+                                <PlayerActions
+                                  player={player}
+                                  canBuy={!player.club}
+                                  canDelete={!player.club}
+                                  onSelect={(action) => setActionDialog({ action, player })}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <footer className="table-footer">
+                      <span>Mostrando {filteredPlayers.length === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, filteredPlayers.length)} de {filteredPlayers.length} jogadores</span>
+                      <div className="pagination">
+                        <button disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft size={15} /> Anterior</button>
+                        {Array.from({ length: totalPages }, (_, index) => index + 1).map((number) => (
+                          <button key={number} className={page === number ? 'current' : ''} onClick={() => setPage(number)}>{number}</button>
+                        ))}
+                        <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Próxima <ChevronRight size={15} /></button>
+                      </div>
+                    </footer>
+
+                  </tr>
+                }
               </section>
               <p className="page-note">Overall e valor de mercado são calculados a cada consulta. A busca ignora maiúsculas, minúsculas e acentos.</p>
             </>
@@ -945,9 +966,9 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
                 ? 'A condição muda o desconto do valor de mercado, recalculado ao salvar.'
                 : action === 'buy'
                   ? 'Escolha o clube comprador e até quando vai a fidelidade do contrato.'
-                : action === 'delete'
-                  ? 'O jogador sairá da lista e da busca, mas as transações e as partidas antigas dele continuam como foram gravadas.'
-                  : 'Edite nome, posição, idade e agilidade. Os demais não mudam.'}</p>
+                  : action === 'delete'
+                    ? 'O jogador sairá da lista e da busca, mas as transações e as partidas antigas dele continuam como foram gravadas.'
+                    : 'Edite nome, posição, idade e agilidade. Os demais não mudam.'}</p>
             </div>
             <button className="icon-button tiny" type="button" aria-label="Fechar" onClick={onClose} disabled={saving}><X size={16} /></button>
           </header>

@@ -484,6 +484,14 @@ h1 {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 9px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.table-card-body{
+  width: 100%;
 }
 
 .table-toolbar {
@@ -781,6 +789,9 @@ tbody tr:hover {
   height: 150px;
   text-align: center;
   color: #777c87;
+  display: inline;
+  align-items: center;
+  justify-content: center;
 }
 
 .empty-state svg {
@@ -792,6 +803,24 @@ tbody tr:hover {
 .empty-state span {
   display: block;
   margin-top: 4px;
+}
+
+.empty-state button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 5px;
+    border: 1px solid #d7d8da;
+    padding-inline: 15px;
+    background: transparent;
+    color: #000;
+    height: 20px;
+    font-size: 8px;
+    margin-top: 10px;
+}
+
+.empty-state button svg{
+  margin: 0;
 }
 
 .table-footer {
