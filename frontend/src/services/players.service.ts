@@ -77,6 +77,42 @@ export type BuyPlayerResponse = {
   club_cash: number
 }
 
+export type SellPlayerPreview = {
+  player_id: number
+  player_name: string
+  club_id: number
+  club_name: string
+  market_value: number
+  purchase_value: number
+  loyalty_until: string
+  remaining_days: number
+  penalty_rate: number
+  penalty: number
+  fee: number
+  profit: number
+  cash_change: number
+  club_cash: number
+}
+
+export type SellPlayerResponse = {
+  id: number
+  club_id: number
+  player_id: number
+  player_name: string
+  type: 'VENDA'
+  value: number
+  fee: number
+  penalty: number
+  profit: number
+  cash_change: number
+  created_at: string
+  purchase_value: number
+  remaining_days: number
+  penalty_rate: number
+  contract_status: string
+  club_cash: number
+}
+
 async function readApiError(response: Response, fallback: string) {
   try {
     const body = (await response.json()) as { message?: string | string[] }
@@ -213,4 +249,36 @@ export async function buyPlayer(id: number, payload: BuyPlayerPayload): Promise<
   }
 
   return response.json() as Promise<BuyPlayerResponse>
+}
+
+export async function getSellPlayerPreview(id: number): Promise<SellPlayerPreview> {
+  const response = await fetch(`${API_URL}/players/${id}/sell-preview`)
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(
+        response,
+        `Não foi possível carregar os dados da venda. Erro HTTP ${response.status}.`,
+      ),
+    )
+  }
+
+  return response.json() as Promise<SellPlayerPreview>
+}
+
+export async function sellPlayer(id: number): Promise<SellPlayerResponse> {
+  const response = await fetch(`${API_URL}/players/${id}/sell`, {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(
+        response,
+        `Não foi possível vender o jogador. Erro HTTP ${response.status}.`,
+      ),
+    )
+  }
+
+  return response.json() as Promise<SellPlayerResponse>
 }

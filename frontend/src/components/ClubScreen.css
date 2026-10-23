@@ -21,7 +21,7 @@
     border-radius: 7px;
     background: #f7f8fa;
     color: #353943;
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 650;
 }
 
@@ -52,13 +52,13 @@
     border: 1px solid #e7e9ed;
     border-radius: 4px;
     color: #515662;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-screen-heading>.primary-button {
     min-height: 28px;
     padding: 0 9px;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-stat-grid {
@@ -70,9 +70,9 @@
 .club-stat-grid article {
     display: grid;
     min-width: 0;
-    min-height: 62px;
-    gap: 3px;
-    padding: 7px 9px;
+    min-height: 72px;
+    gap: 5px;
+    padding: 10px 12px;
     border: 1px solid #e7e9ed;
     border-radius: 7px;
     background: #fff;
@@ -83,7 +83,7 @@
     align-items: center;
     justify-content: space-between;
     color: #626772;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-stat-grid article>span svg {
@@ -99,14 +99,14 @@
 
 .club-stat-grid article>strong small {
     color: #737783;
-    font-size: 7px;
+    font-size: 11px;
     font-weight: 400;
 }
 
 .club-stat-grid article>p {
     margin: 0;
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-tabs {
@@ -126,7 +126,7 @@
     border-bottom: 2px solid transparent;
     background: transparent;
     color: #737783;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-tabs button.active {
@@ -137,12 +137,12 @@
 
 .club-tabs button span {
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-tabs button.active span {
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
     background: #EFF6FF;
     color: #155dfc;
     padding: 1px 4px;
@@ -158,8 +158,8 @@
 .club-lineup-error {
     display: grid;
     grid-template-columns: 14px minmax(0, 1fr);
-    gap: 6px;
-    padding: 7px 9px;
+    gap: 8px;
+    padding: 10px 12px;
     border: 1px solid #ffdf80;
     border-radius: 6px;
     background: #fff9e8;
@@ -168,14 +168,14 @@
 
 .club-lineup-warning strong {
     display: block;
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 550;
 }
 
 .club-lineup-warning p {
     margin: 3px 0 0;
     color: #8d4c17;
-    font-size: 7px;
+    font-size: 11px;
     line-height: 1.35;
 }
 
@@ -184,7 +184,7 @@
     border-color: #ffd0d4;
     background: #fff5f6;
     color: #b42318;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-lineup-grid {
@@ -205,7 +205,7 @@
 }
 
 .club-lineup-panel {
-    padding: 10px;
+    padding: 12px;
 }
 
 .club-panel-heading,
@@ -213,7 +213,8 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 9px;
+    gap: 11px;
+    padding: 12px;
 }
 
 .club-panel-heading h2,
@@ -222,7 +223,7 @@
 .club-reserve-card h2 {
     margin: 0;
     color: #252932;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 600;
 }
 
@@ -230,7 +231,7 @@
 .club-formation-heading p {
     margin: 3px 0 0;
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
     line-height: 1.35;
 }
 
@@ -241,7 +242,7 @@
     border-radius: 10px;
     background: #fff9e8;
     color: #a94c00;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-lineup-status.ready {
@@ -265,10 +266,10 @@
 .club-formation-options button {
     display: flex;
     min-width: 0;
-    min-height: 42px;
+    min-height: 50px;
     align-items: center;
     gap: 5px;
-    padding: 5px;
+    padding: 8px;
     border: 1px solid #e7e9ed;
     border-radius: 6px;
     background: #fff;
@@ -288,12 +289,12 @@
 
 .club-formation-options button strong {
     color: #252932;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-formation-options button small {
     color: #777c87;
-    font-size: 6px;
+    font-size: 10px;
     line-height: 1.2;
 }
 
@@ -384,15 +385,15 @@
 }
 
 .club-lineup-table-head {
-    min-height: 23px;
+    min-height: 30px;
     border-top: 1px solid #eceef1;
     border-bottom: 1px solid #eceef1;
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-lineup-row {
-    min-height: 36px;
+    min-height: 44px;
     border-bottom: 1px solid #f0f1f3;
 }
 
@@ -403,13 +404,13 @@
 
 .club-lineup-slot strong {
     color: #3c4049;
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 550;
 }
 
 .club-lineup-slot small {
     color: #777c87;
-    font-size: 6px;
+    font-size: 10px;
 }
 
 .club-player-select {
@@ -419,14 +420,14 @@
 
 .club-player-select select {
     width: 100%;
-    height: 25px;
-    padding: 0 20px 0 7px;
+    height: 32px;
+    padding: 0 22px 0 9px;
     appearance: none;
     border: 1px solid #c9cbd1;
     border-radius: 5px;
     background: #fff;
     color: #353943;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-player-select svg {
@@ -440,7 +441,7 @@
 .club-lineup-row .condition {
     justify-self: start;
     padding: 3px 5px;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-lineup-row .condition i {
@@ -461,13 +462,13 @@
 
 .club-lineup-overall {
     color: #353943;
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 600;
 }
 
 .club-lineup-attribute {
     color: #626772;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-lineup-footer {
@@ -480,7 +481,7 @@
 
 .club-lineup-footer>span {
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-lineup-footer>div {
@@ -489,10 +490,10 @@
 }
 
 .club-lineup-footer button {
-    min-height: 25px;
+    min-height: 32px;
     gap: 4px;
     padding: 0 8px;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-lineup-aside {
@@ -502,7 +503,7 @@
 
 .club-pitch-card,
 .club-reserve-card {
-    padding: 9px;
+    padding: 12px;
 }
 
 .club-pitch-card>header,
@@ -515,7 +516,7 @@
 .club-pitch-card>header small,
 .club-reserve-card>header small {
     color: #777c87;
-    font-size: 6px;
+    font-size: 10px;
     line-height: 1.3;
 }
 
@@ -594,7 +595,7 @@
     border-radius: 50%;
     background: rgb(255 255 255 / 10%);
     color: #effff4;
-    font-size: 6px;
+    font-size: 10px;
 }
 
 .club-pitch-player.filled>span {
@@ -613,7 +614,7 @@
     padding: 1px 3px;
     border-radius: 3px;
     background: rgb(0 0 0 / 30%);
-    font-size: 6px;
+    font-size: 10px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -624,7 +625,7 @@
     gap: 5px;
     margin: 7px 0 0;
     color: #777c87;
-    font-size: 6px;
+    font-size: 10px;
     line-height: 1.35;
 }
 
@@ -636,7 +637,7 @@
 .club-empty-state {
     margin: 0;
     color: #777c87;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-reserve-card>div {
@@ -655,7 +656,7 @@
     background: transparent;
     color: #000;
     height: 20px;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-reserve-card>div span {
@@ -666,33 +667,33 @@
     border: 1px solid #e7e9ed;
     border-radius: 5px;
     color: #515662;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-reserve-card>div small {
     color: #777c87;
-    font-size: 6px;
+    font-size: 10px;
 }
 
 .club-lineup-note {
     margin: 0;
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
     line-height: 1.35;
 }
 
 .club-roster-panel {
-    padding: 12px;
+    overflow: hidden;
 }
 
 .club-roster-panel>.club-panel-heading {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .club-roster-panel>.club-panel-heading .primary-button {
     min-height: 27px;
     padding: 0 8px;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-table-scroll {
@@ -705,23 +706,29 @@
     border-collapse: collapse;
     text-align: left;
     white-space: nowrap;
+    font-weight: 700;
+    color: #000;
+}
+
+.club-roster-table {
+    min-width: 820px;
 }
 
 .club-data-table th {
-    height: 28px;
-    padding: 0 8px;
+    height: 36px;
+    padding: 4px 10px;
     background: #fafafa;
     color: #777c87;
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 500;
 }
 
 .club-data-table td {
-    height: 37px;
-    padding: 0 8px;
+    height: 44px;
+    padding: 6px 10px;
     border-top: 1px solid #eceef1;
     color: #353943;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-data-table td:first-child {
@@ -740,9 +747,43 @@
     height: 20px;
     place-items: center;
     border-radius: 50%;
-    background: #eef2f8;
+    background: #e9eaf0;
     color: #575e69;
-    font-size: 6px;
+    font-size: 10px;
+}
+
+.club-roster-avatar.avatar-0 {
+    background: #d9faf2;
+    color: #087e6b;
+}
+
+.club-roster-avatar.avatar-1 {
+    background: #e7eaf1;
+    color: #545968;
+}
+
+.club-roster-avatar.avatar-2 {
+    background: #fbe2f0;
+    color: #c02b83;
+}
+
+.club-roster-avatar.avatar-3 {
+    background: #fee6e6;
+    color: #c33838;
+}
+
+.club-roster-avatar.avatar-4 {
+    background: #dff7fc;
+    color: #16839a;
+}
+
+.club-roster-avatar.avatar-5 {
+    background: #e5e7eb;
+    color: #575e69;
+}
+
+.club-roster-error {
+    margin: 0 0 8px;
 }
 
 .club-roster-panel .club-empty-state {
@@ -750,10 +791,30 @@
     text-align: center;
 }
 
+.club-sell-button {
+    display: inline-flex;
+    min-height: 23px;
+    align-items: center;
+    gap: 4px;
+    padding: 0 7px;
+    border: 1px solid #dfe3e9;
+    border-radius: 5px;
+    background: #fff;
+    color: #3f4652;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.club-sell-button:hover {
+    border-color: #efc16e;
+    background: #fff9eb;
+    color: #a45b08;
+}
+
 .club-transaction-type {
     padding: 3px 5px;
     border-radius: 10px;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-transaction-type.purchase {
@@ -791,11 +852,11 @@
 
 .club-history-heading {
     display: flex;
-    min-height: 47px;
+    min-height: 58px;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 8px 11px;
+    padding: 11px 14px;
 }
 
 .club-history-heading h2 {
@@ -808,25 +869,25 @@
 .club-history-heading p {
     margin: 3px 0 0;
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-export-button {
     min-height: 26px;
     gap: 5px;
     padding: 0 8px;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-history-filters {
     display: flex;
-    min-height: 35px;
+    min-height: 44px;
     align-items: center;
-    gap: 6px;
-    padding: 4px 11px;
+    gap: 8px;
+    padding: 7px 14px;
     border-bottom: 1px solid #e7e9ed;
     color: #626772;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-history-filters > span {
@@ -878,7 +939,7 @@
     outline: 0;
     background: transparent;
     color: #353943;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-history-clear {
@@ -886,7 +947,7 @@
     border: 0;
     background: transparent;
     color: #155dfc;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .club-history-table-scroll {
@@ -918,7 +979,7 @@
     display: inline;
     margin-left: 5px;
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 .club-history-table td:nth-child(4),
@@ -950,7 +1011,7 @@
     border-radius: 50%;
     background: #eef2f8;
     color: #575e69;
-    font-size: 6px;
+    font-size: 10px;
 }
 
 .club-history-totals {
@@ -963,10 +1024,10 @@
 .club-history-totals article {
     display: grid;
     min-width: 0;
-    min-height: 62px;
+    min-height: 76px;
     align-content: center;
-    gap: 4px;
-    padding: 7px 9px;
+    gap: 6px;
+    padding: 10px 12px;
     border-right: 1px solid #e7e9ed;
 }
 
@@ -979,7 +1040,7 @@
     align-items: center;
     gap: 4px;
     color: #626772;
-    font-size: 7px;
+    font-size: 11px;
     white-space: nowrap;
 }
 
@@ -992,7 +1053,7 @@
 
 .club-history-totals article > small {
     color: #777c87;
-    font-size: 6px;
+    font-size: 10px;
 }
 
 .club-history-totals .club-cash-negative,
@@ -1004,7 +1065,7 @@
     margin: 0;
     padding: 8px 0 0;
     color: #777c87;
-    font-size: 7px;
+    font-size: 11px;
 }
 
 @media (max-width: 700px) {
@@ -1098,7 +1159,7 @@
 
     .club-screen-heading>.primary-button {
         padding: 0 6px;
-        font-size: 7px;
+        font-size: 11px;
     }
 
     .club-lineup-footer {

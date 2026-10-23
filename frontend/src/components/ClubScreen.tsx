@@ -8,6 +8,7 @@ import {
     ClipboardList,
     Coins,
     Download,
+    HandCoins,
     History,
     Landmark,
     RefreshCw,
@@ -20,11 +21,13 @@ import {
 
 import {
     getClubLineup,
+    getClubRosterContracts,
     getClubTransactions,
     updateClubLineup,
     type Club,
     type ClubFormation,
     type ClubLineup,
+    type ClubRosterContract,
     type ClubTransaction,
 } from '../services/clubs.service'
 import './ClubScreen.css'
@@ -51,6 +54,9 @@ type ClubScreenProps = {
     club: Club
     players: ClubPlayer[]
     onBuyPlayers: () => void
+    onSellPlayer: (playerId: number) => void
+    historyRefreshKey: number
+    initialTab: 'Elenco' | 'Escalação' | 'Histórico'
     onToast: (toast: { title: string; description: string }) => void
 }
 
@@ -156,9 +162,16 @@ function conditionClass(condition: ClubPlayer['condition']) {
     return 'poor'
 }
 
-export default function ClubScreen({ club, players, onBuyPlayers, onToast }: ClubScreenProps) {
-    const [activeTab, setActiveTab] = useState<'Elenco' | 'Escalação' | 'Histórico'>('Elenco')
+function ClubRosterAvatar({ player }: { player: ClubPlayer }) {
+    const [colorIndex] = useState(() => Math.floor(Math.random() * 6))
+
+    return <span className={`club-roster-avatar avatar-${colorIndex}`}>{initials(player.name)}</span>
+}
+
+export default function ClubScreen({ club, players, onBuyPlayers, onSellPlayer, historyRefreshKey, initialTab, onToast }: ClubScreenProps) {
+    const [activeTab, setActiveTab] = useState<'Elenco' | 'Escalação' | 'Histórico'>(initialTab)
     const [lineup, setLineup] = useState<Awaited<ReturnType<typeof getClubLineup>> | null>(null)
+    const [rosterContracts, setRosterContracts] = useState<{ clubId: number; contracts: Map<number, ClubRosterContract | null>; error: string | null } | null>(null)
     const [transactions, setTransactions] = useState<ClubTransaction[] | null>(null)
     const [historyTypes, setHistoryTypes] = useState({ COMPRA: true, VENDA: true })
     const [historyPlayerId, setHistoryPlayerId] = useState('')
@@ -174,6 +187,33 @@ export default function ClubScreen({ club, players, onBuyPlayers, onToast }: Clu
         () => players.filter((player) => player.clubId === club.id).sort((a, b) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position] || a.name.localeCompare(b.name, 'pt-BR')),
         [players, club.id],
     )
+
+    useEffect(() => {
+        let active = true
+        void getClubRosterContracts(club.id)
+            .then((response) => {
+                if (active) {
+                    setRosterContracts({
+                        clubId: club.id,
+                        contracts: new Map(response.players.map((player) => [player.id, player.contract])),
+                        error: null,
+                    })
+                }
+            })
+            .catch((error: unknown) => {
+                if (active) {
+                    setRosterContracts({
+                        clubId: club.id,
+                        contracts: new Map(),
+                        error: error instanceof Error ? error.message : 'Não foi possível carregar os contratos do elenco.',
+                    })
+                }
+            })
+
+        return () => {
+            active = false
+        }
+    }, [club.id])
 
     useEffect(() => {
         let active = true
@@ -198,7 +238,10 @@ export default function ClubScreen({ club, players, onBuyPlayers, onToast }: Clu
         let active = true
         void getClubTransactions(club.id)
             .then((response) => {
-                if (active) setTransactions(response)
+                if (active) {
+                    setTransactions(response)
+                    setHistoryError(null)
+                }
             })
             .catch((error: unknown) => {
                 if (active) setHistoryError(error instanceof Error ? error.message : 'Não foi possível carregar o histórico.')
@@ -207,9 +250,10 @@ export default function ClubScreen({ club, players, onBuyPlayers, onToast }: Clu
         return () => {
             active = false
         }
-    }, [club.id])
+    }, [club.id, historyRefreshKey])
 
     const currentFormation = FORMATIONS.find((item) => item.value === formation) ?? FORMATIONS[2]
+    const currentRosterContracts = rosterContracts?.clubId === club.id ? rosterContracts : null
     const playerById = new Map(roster.map((player) => [player.id, player]))
     const selectedPlayers = selectedIds.map((id) => (id === null ? null : playerById.get(id) ?? null))
     const selectedCount = selectedIds.filter((id) => id !== null).length
@@ -448,32 +492,47 @@ export default function ClubScreen({ club, players, onBuyPlayers, onToast }: Clu
                                     <h2>Elenco</h2>
                                     <p>{roster.length} jogador{roster.length === 1 ? '' : 'es'} contratado{roster.length === 1 ? '' : 's'} pelo {club.name}.</p>
                                 </div>
-                                <button className="primary-button" onClick={onBuyPlayers}><ShoppingCart size={13} /> Comprar jogadores</button>
                             </header>
+                            {currentRosterContracts?.error && <p className="club-lineup-error club-roster-error" role="alert">{currentRosterContracts.error}</p>}
                             <div className="club-table-scroll">
-                                <table className="club-data-table">
+                                <table className="club-data-table club-roster-table">
                                     <thead>
                                         <tr>
-                                            <th>Jogador</th><th>Posição</th><th>Overall</th><th>Agilidade</th><th>Idade</th><th>Condição</th><th>Valor de mercado</th>
+                                            <th>Jogador</th><th>Posição</th><th>Overall</th><th>Condição</th><th>Valor de mercado</th><th>Valor da compra</th><th>Fim da fidelidade</th><th>Dias restantes</th><th>% de multa</th><th>Ação</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {roster.map((player) =>
-                                            <tr key={player.id}>
+                                        {roster.map((player) => {
+                                            const contract = currentRosterContracts?.contracts.get(player.id)
+                                            const loyaltyDate = contract
+                                                ? new Intl.DateTimeFormat('pt-BR', {
+                                                    timeZone: 'America/Sao_Paulo',
+                                                    day: '2-digit',
+                                                    month: '2-digit',
+                                                    year: 'numeric',
+                                                }).format(new Date(contract.loyalty_until))
+                                                : null
+
+                                            return <tr key={player.id}>
                                                 <td>
-                                                    <span className="club-roster-avatar">{initials(player.name)}</span>
+                                                    <ClubRosterAvatar player={player} />
                                                     <strong>{player.name}</strong>
                                                 </td>
-                                                <td>{player.position}</td>
+                                                <td><span className="position-pill">{player.position}</span></td>
                                                 <td>{player.overall}</td>
-                                                <td>{player.agility}</td>
-                                                <td>{player.age}</td>
                                                 <td>
                                                     <span className={`condition condition-${conditionClass(player.condition)}`}><i />{player.condition}</span>
                                                 </td>
                                                 <td>{money(player.marketValue)}</td>
+                                                <td>{contract ? money(contract.purchase_value) : currentRosterContracts ? '—' : '...'}</td>
+                                                <td>{loyaltyDate ?? (currentRosterContracts ? '—' : '...')}</td>
+                                                <td>{contract ? contract.remaining_days : currentRosterContracts ? '—' : '...'}</td>
+                                                <td>{contract
+                                                    ? <span className={`condition condition-${contract.penalty_rate === 0 ? 'fit' : contract.penalty_rate <= 10 ? 'poor' : 'sick'}`}>{contract.penalty_rate}%</span>
+                                                    : currentRosterContracts ? '—' : '...'}</td>
+                                                <td><button className="club-sell-button" type="button" onClick={() => onSellPlayer(player.id)}><HandCoins size={11} /> Vender</button></td>
                                             </tr>
-                                        )}
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

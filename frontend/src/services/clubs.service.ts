@@ -28,6 +28,20 @@ export type ClubLineup = {
   }[]
 }
 
+export type ClubRosterContract = {
+  purchase_value: number
+  loyalty_until: string
+  remaining_days: number
+  penalty_rate: number
+}
+
+export type ClubRosterContracts = {
+  players: {
+    id: number
+    contract: ClubRosterContract | null
+  }[]
+}
+
 export type ClubFormation = '3-1' | '2-2' | '2-1-1' | '1-2-1'
 
 export type ClubTransaction = {
@@ -89,6 +103,16 @@ export async function getClubLineup(clubId: number): Promise<ClubLineup> {
   }
 
   return response.json() as Promise<ClubLineup>
+}
+
+export async function getClubRosterContracts(clubId: number): Promise<ClubRosterContracts> {
+  const response = await fetch(`${API_URL}/clubs/${clubId}`)
+
+  if (!response.ok) {
+    throw new Error(await getApiError(response, `Não foi possível carregar os contratos do elenco. Erro HTTP ${response.status}.`))
+  }
+
+  return response.json() as Promise<ClubRosterContracts>
 }
 
 export async function updateClubLineup(

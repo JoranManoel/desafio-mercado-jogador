@@ -37,16 +37,23 @@ import {
   ChartColumn,
   CheckCircle2,
   Lock,
+  ArrowUpRight,
+  HandCoins,
+  History,
 } from 'lucide-react'
 import './App.css'
 import { getClubLineup, getClubs, type Club } from './services/clubs.service'
 import {
   buyPlayer,
   deletePlayer,
+  getSellPlayerPreview,
+  sellPlayer,
   updatePlayer,
   updatePlayerCondition,
   type BuyPlayerResponse,
   type PlayerCondition,
+  type SellPlayerPreview,
+  type SellPlayerResponse,
 } from './services/players.service'
 import HomeScreen from './components/HomeScreen'
 import NewPlayerScreen from './components/NewPlayerScreen'
@@ -78,7 +85,7 @@ type Player = {
   potential: number
 }
 
-type PlayerAction = 'details' | 'edit' | 'condition' | 'buy' | 'delete'
+type PlayerAction = 'details' | 'edit' | 'condition' | 'buy' | 'sell' | 'delete'
 type ToastMessage = { title: string; description: string }
 
 const POSITION_OPTIONS: { value: Player['position']; label: string }[] = [
@@ -194,6 +201,8 @@ function App() {
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [activeSection, setActiveSection] = useState('Início')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [clubHistoryRefreshKey, setClubHistoryRefreshKey] = useState(0)
+  const [clubHistoryNavigationId, setClubHistoryNavigationId] = useState<number | null>(null)
 
   const filteredPlayers = useMemo(() => {
     const normalizedSearch = normalizeSearchText(search.trim())
@@ -234,6 +243,7 @@ function App() {
   const visiblePlayers = filteredPlayers.slice((page - 1) * pageSize, page * pageSize)
 
   function changeSection(section: string) {
+    setClubHistoryNavigationId(null)
     setActiveSection(section)
   }
 
@@ -461,7 +471,7 @@ function App() {
                       setAge('');
                       setValueRange('');
                     }}>
-                      <X size={9}/>
+                      <X size={9} />
                       Limpar filtros
                     </button>
                   </td>
@@ -542,6 +552,7 @@ function App() {
                                 <PlayerActions
                                   player={player}
                                   canBuy={!player.club}
+                                  canSell={Boolean(player.club)}
                                   canDelete={!player.club}
                                   onSelect={(action) => setActionDialog({ action, player })}
                                 />
@@ -579,13 +590,20 @@ function App() {
             />
           ) : activeClub ? (
             <ClubScreen
+              key={`${activeClub.id}-${clubHistoryNavigationId ?? 'default'}`}
               club={activeClub}
               players={players}
+              historyRefreshKey={clubHistoryRefreshKey}
+              initialTab={clubHistoryNavigationId === activeClub.id ? 'Histórico' : 'Elenco'}
               onBuyPlayers={() => {
                 setClub('')
                 setTab('Livres')
                 setPage(1)
                 changeSection('Jogadores')
+              }}
+              onSellPlayer={(playerId) => {
+                const player = players.find((item) => item.id === playerId)
+                if (player) setActionDialog({ action: 'sell', player })
               }}
               onToast={(message) => setToast(message)}
             />
@@ -622,12 +640,21 @@ function App() {
               if (!keepDialogOpen) setActionDialog(null)
               setPage(1)
               await loadPlayers()
+              if (actionDialog.action === 'sell') setClubHistoryRefreshKey((version) => version + 1)
               if (!keepDialogOpen) setToast(message)
             }}
             onViewClub={(clubId) => {
               const selectedClub = clubs.find((club) => club.id === clubId)
               setActionDialog(null)
               if (selectedClub) changeSection(selectedClub.name)
+            }}
+            onViewClubHistory={(clubId) => {
+              const selectedClub = clubs.find((club) => club.id === clubId)
+              setActionDialog(null)
+              if (selectedClub) {
+                setClubHistoryNavigationId(clubId)
+                setActiveSection(selectedClub.name)
+              }
             }}
           />
         )}
@@ -661,11 +688,12 @@ function SuccessToast({ message, onClose }: { message: ToastMessage; onClose: ()
 type PlayerActionsProps = {
   player: Player
   canBuy: boolean
+  canSell: boolean
   canDelete: boolean
   onSelect: (action: PlayerAction) => void
 }
 
-function PlayerActions({ player, canBuy, canDelete, onSelect }: PlayerActionsProps) {
+function PlayerActions({ player, canBuy, canSell, canDelete, onSelect }: PlayerActionsProps) {
   const [open, setOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
   const menuRef = useRef<HTMLDivElement>(null)
@@ -703,7 +731,7 @@ function PlayerActions({ player, canBuy, canDelete, onSelect }: PlayerActionsPro
     if (!rect) return
 
     const width = 184
-    const height = 220
+    const height = 250
     const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))
     const below = rect.bottom + 4
     const top = below + height <= window.innerHeight - 8
@@ -749,6 +777,7 @@ function PlayerActions({ player, canBuy, canDelete, onSelect }: PlayerActionsPro
           <button role="menuitem" onClick={() => select('condition')}><HeartPulse size={14} />Alterar condição</button>
           <div className="player-actions-divider" />
           <button role="menuitem" disabled={!canBuy} onClick={() => select('buy')}><ShoppingCart size={14} />Comprar</button>
+          <button role="menuitem" disabled={!canSell} onClick={() => select('sell')}><ArrowUpRight size={14} />Vender</button>
           <div className="player-actions-divider" />
           <button className="player-action-danger" role="menuitem" disabled={!canDelete} onClick={() => select('delete')}><Trash2 size={14} />Excluir</button>
           {!canDelete && <p>Apenas para jogador livre.</p> || <p>Disponível porque o jogador está livre.</p>}
@@ -767,6 +796,7 @@ type PlayerActionDialogProps = {
   onSelectAction: (action: PlayerAction) => void
   onComplete: (message: ToastMessage, keepDialogOpen?: boolean) => Promise<void>
   onViewClub: (clubId: number) => void
+  onViewClubHistory: (clubId: number) => void
 }
 
 const CONDITION_OPTIONS: { value: PlayerCondition; label: string; description: string }[] = [
@@ -790,7 +820,7 @@ function defaultLoyaltyDate() {
   return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`
 }
 
-function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, onComplete, onViewClub }: PlayerActionDialogProps) {
+function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, onComplete, onViewClub, onViewClubHistory }: PlayerActionDialogProps) {
   const [name, setName] = useState(player.name)
   const [position, setPosition] = useState<Player['position']>(player.position)
   const [age, setAge] = useState(player.age)
@@ -802,6 +832,8 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
   const [error, setError] = useState<string | null>(null)
   const [lineupStatus, setLineupStatus] = useState<boolean | 'error' | null>(null)
   const [purchaseReceipt, setPurchaseReceipt] = useState<BuyPlayerResponse | null>(null)
+  const [salePreview, setSalePreview] = useState<SellPlayerPreview | null>(null)
+  const [saleReceipt, setSaleReceipt] = useState<SellPlayerResponse | null>(null)
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -813,7 +845,7 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
   }, [onClose, saving])
 
   useEffect(() => {
-    if (action !== 'condition' || !player.clubId) return
+    if ((action !== 'condition' && action !== 'sell') || !player.clubId) return
 
     let active = true
     void getClubLineup(player.clubId)
@@ -829,11 +861,29 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
     }
   }, [action, player.clubId, player.id])
 
+  useEffect(() => {
+    if (action !== 'sell') return
+
+    let active = true
+    void getSellPlayerPreview(player.id)
+      .then((preview) => {
+        if (active) setSalePreview(preview)
+      })
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : 'Não foi possível carregar os dados da venda.')
+      })
+
+    return () => {
+      active = false
+    }
+  }, [action, player.id])
+
   const titles: Record<PlayerAction, string> = {
     details: 'Detalhes do jogador',
     edit: 'Editar jogador',
     condition: 'Alterar condição física',
     buy: 'Comprar jogador',
+    sell: 'Vender jogador',
     delete: 'Excluir jogador',
   }
 
@@ -853,6 +903,7 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
 
     try {
       let purchaseResult: BuyPlayerResponse | null = null
+      let saleResult: SellPlayerResponse | null = null
       let successToast: ToastMessage = {
         title: 'Alteração concluída',
         description: `Os dados de ${player.name} foram atualizados.`,
@@ -882,6 +933,12 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
           title: 'Jogador contratado',
           description: `${player.name} agora faz parte do ${clubName}.`,
         }
+      } else if (action === 'sell') {
+        saleResult = await sellPlayer(player.id)
+        successToast = {
+          title: 'Jogador vendido',
+          description: `${player.name} foi liberado do ${player.club ?? 'clube'}.`,
+        }
       } else if (action === 'delete') {
         await deletePlayer(player.id)
         successToast = {
@@ -893,6 +950,9 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
       if (purchaseResult) {
         await onComplete(successToast, true)
         setPurchaseReceipt(purchaseResult)
+      } else if (saleResult) {
+        await onComplete(successToast, true)
+        setSaleReceipt(saleResult)
       } else {
         await onComplete(successToast)
       }
@@ -940,11 +1000,41 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
     )
   }
 
+  if (action === 'sell' && saleReceipt) {
+    const sellingClub = clubs.find((item) => item.id === saleReceipt.club_id)
+    return createPortal(
+      <div className="player-dialog-backdrop">
+        <section className="player-action-dialog player-buy-success player-sale-success" role="dialog" aria-modal="true" aria-labelledby="player-sale-success-title">
+          <button className="icon-button tiny player-buy-success-close" type="button" aria-label="Fechar" onClick={onClose}><X size={16} /></button>
+          <CheckCircle2 className="player-buy-success-icon" size={25} />
+          <h2 id="player-sale-success-title">Venda concluída</h2>
+          <p>{saleReceipt.player_name} agora está livre. O {sellingClub?.name ?? 'clube'} recebeu o crédito líquido da venda.</p>
+          <dl className="player-buy-receipt">
+            <div><dt><strong>Valor de compra</strong></dt><dd className="player-sale-purchase-value">{money(saleReceipt.purchase_value)}</dd></div>
+            <div><dt><strong>Valor da venda</strong><small>Valor de mercado no momento da venda</small></dt><dd>{money(saleReceipt.value)}</dd></div>
+            <div><dt><strong>Dias restantes</strong></dt><dd>{saleReceipt.remaining_days}</dd></div>
+            <div><dt><strong>Multa</strong><small>{saleReceipt.penalty_rate}% pela fidelidade restante</small></dt><dd>{money(saleReceipt.penalty)}</dd></div>
+            <div><dt><strong>Lucro</strong><small>Venda menos valor de compra</small></dt><dd className={saleReceipt.profit < 0 ? 'player-sale-negative' : 'player-sale-positive'}>{saleReceipt.profit > 0 ? '+' : ''}{money(saleReceipt.profit)}</dd></div>
+            <div><dt><strong>Comissão</strong><small>Calculada sobre o lucro positivo</small></dt><dd>{money(saleReceipt.fee)}</dd></div>
+            <div className="player-buy-total"><dt><strong>Crédito no caixa</strong><small>Valor da venda menos comissão e multa</small></dt><dd>+{money(saleReceipt.cash_change)}</dd></div>
+            <div><dt>Contrato</dt><dd><span className={`condition condition-${saleReceipt.contract_status === 'RESCINDIDO' ? 'sick' : 'poor'}`}><i />{saleReceipt.contract_status === 'RESCINDIDO' ? 'RESCINDIDO' : 'ENCERRADO'}</span></dd></div>
+            <div className="player-buy-cash"><dt><strong>Novo caixa do {sellingClub?.name ?? 'clube'}</strong></dt><dd>{money(saleReceipt.club_cash)}</dd></div>
+          </dl>
+          <footer>
+            <button className="secondary-button" type="button" onClick={() => onViewClubHistory(saleReceipt.club_id)}>Ver histórico <History size={13} /></button>
+            <button className="primary-button" type="button" onClick={onClose}>Fechar</button>
+          </footer>
+        </section>
+      </div>,
+      document.body,
+    )
+  }
+
   return createPortal(
     <div className={`player-dialog-backdrop ${action === 'details' ? 'player-details-backdrop' : ''}`} onMouseDown={(event) => {
       if (event.target === event.currentTarget && !saving) onClose()
     }}>
-      <section className={`player-action-dialog ${action === 'details' ? 'player-details-drawer' : ''} ${action === 'condition' ? 'player-condition-dialog' : ''} ${action === 'buy' ? 'player-buy-dialog' : ''} ${action === 'delete' ? 'player-delete-dialog' : ''}`} role="dialog" aria-modal="true" aria-labelledby="player-action-title">
+      <section className={`player-action-dialog ${action === 'details' ? 'player-details-drawer' : ''} ${action === 'condition' ? 'player-condition-dialog' : ''} ${action === 'buy' || action === 'sell' ? 'player-buy-dialog' : ''} ${action === 'sell' ? 'player-sale-dialog' : ''} ${action === 'delete' ? 'player-delete-dialog' : ''}`} role="dialog" aria-modal="true" aria-labelledby="player-action-title">
         {action === 'details' ? (
           <header className="player-details-heading">
             <span className="player-details-avatar">{player.name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span>
@@ -959,16 +1049,18 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
             <button className="icon-button tiny" type="button" aria-label="Fechar" onClick={onClose} disabled={saving}><X size={16} /></button>
           </header>
         ) : (
-          <header>
+          <header className="player-details-heading">
             <div>
               <h2 id="player-action-title">{action === 'delete' ? `Excluir ${player.name}?` : titles[action]}</h2>
               <p>{action === 'condition'
                 ? 'A condição muda o desconto do valor de mercado, recalculado ao salvar.'
                 : action === 'buy'
                   ? 'Escolha o clube comprador e até quando vai a fidelidade do contrato.'
-                  : action === 'delete'
-                    ? 'O jogador sairá da lista e da busca, mas as transações e as partidas antigas dele continuam como foram gravadas.'
-                    : 'Edite nome, posição, idade e agilidade. Os demais não mudam.'}</p>
+                  : action === 'sell'
+                    ? `Confira os valores da venda do ${player.club ?? 'clube'} antes de confirmar.`
+                    : action === 'delete'
+                      ? 'O jogador sairá da lista e da busca, mas as transações e as partidas antigas dele continuam como foram gravadas.'
+                      : 'Edite nome, posição, idade e agilidade. Os demais não mudam.'}</p>
             </div>
             <button className="icon-button tiny" type="button" aria-label="Fechar" onClick={onClose} disabled={saving}><X size={16} /></button>
           </header>
@@ -1013,7 +1105,9 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
             <footer className="player-details-footer">
               <button className="secondary-button" type="button" onClick={() => onSelectAction('edit')}><Pencil size={13} />Editar</button>
               <button className="secondary-button" type="button" onClick={() => onSelectAction('condition')}><HeartPulse size={13} />Alterar condição</button>
-              {!player.club && <button className="primary-button" type="button" onClick={() => onSelectAction('buy')}><ShoppingCart size={13} />Comprar</button>}
+              {!player.club
+                ? <button className="primary-button" type="button" onClick={() => onSelectAction('buy')}><ShoppingCart size={13} />Comprar</button>
+                : <button className="primary-button" type="button" onClick={() => onSelectAction('sell')}><ArrowUpRight size={13} />Vender</button>}
             </footer>
           </div>
         ) : (
@@ -1157,18 +1251,63 @@ function PlayerActionDialog({ action, player, clubs, onClose, onSelectAction, on
                 {clubs.length === 0 && <small>Nenhum clube disponível para a compra.</small>}
               </div>
             )}
-            {action !== 'buy' && action === 'delete' && (
+            {action === 'sell' && (
+              <div className="player-buy-form player-sale-form">
+                {lineupStatus === true && (
+                  <div className="player-sale-warning">
+                    <TriangleAlert size={14} />
+                    <strong>{player.name} é titular</strong>
+                    <p></p>
+                    <p><span>Ao vender, ele sai da escalação e fica livre. O {player.club} só volta a jogar partidas depois de escalar novamente 5 titulares.</span></p>
+                  </div>
+                )}
+                {error && (
+                  <div className="player-buy-error" role="alert">
+                    <TriangleAlert size={14} />
+                    <div><strong>Não foi possível preparar a venda</strong><p>{error}</p></div>
+                  </div>
+                )}
+                <div className="player-buy-player">
+                  <span className="player-details-avatar">{player.name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span>
+                  <div><strong>{player.name}</strong><small>{player.position} · {player.positionName} · {player.age} anos</small></div>
+                  <span><small>Valor de mercado</small><strong>{money(salePreview?.market_value ?? player.marketValue)}</strong></span>
+                </div>
+
+                {salePreview ? (
+                  <>
+                    <div className="player-sale-details">
+                      <div><span>Clube vendedor</span><strong>{salePreview.club_name}</strong></div>
+                      <div><span>Valor de compra</span><strong className="player-sale-purchase-value">{money(salePreview.purchase_value)}</strong></div>
+                      <div><span>Fim da fidelidade</span><strong>{new Intl.DateTimeFormat('pt-BR', {
+                        timeZone: 'America/Sao_Paulo',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hourCycle: 'h23',
+                      }).format(new Date(salePreview.loyalty_until))}</strong></div>
+                      <div><span>Dias restantes</span><strong>{salePreview.remaining_days}</strong></div>
+                      <div><span>% multa se vender agora</span><strong className="player-sale-penalty">{salePreview.penalty_rate}%</strong></div>
+                    </div>
+                  </>
+                ) : !error ? <p className="player-sale-loading">Carregando os dados do contrato e da venda...</p> : null}
+
+                <div className="player-buy-tax-note"><Info size={12} /><p>A multa depende dos dias restantes de fidelidade e a comissão incide sobre o lucro positivo. Os valores finais são recalculados ao confirmar.</p></div>
+              </div>
+            )}
+            {action === 'delete' && (
               <div className="player-delete-summary">
                 <span className="player-details-avatar">{player.name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span>
                 <div><strong>{player.name}</strong><small>{player.position} · {player.positionName} · {player.age} anos</small></div>
                 <span className="free-badge">{player.club ?? 'Livre'}</span>
               </div>
             )}
-            {error && action !== 'buy' && <p className="player-action-error" role="alert">{error}</p>}
+            {error && action !== 'buy' && action !== 'sell' && <p className="player-action-error" role="alert">{error}</p>}
             <footer>
               <button className="secondary-button" type="button" onClick={onClose} disabled={saving}>Cancelar</button>
-              <button className={action === 'delete' ? 'player-confirm-danger' : 'primary-button'} type="submit" disabled={saving || (action === 'buy' && (clubs.length === 0 || !selectedClub))}>
-                {saving ? 'Salvando...' : action === 'delete' ? <><Trash2 size={13} /> Excluir jogador</> : action === 'buy' ? <><ShoppingCart size={13} /> Confirmar compra</> : action === 'condition' ? 'Salvar condição' : 'Salvar alterações'}
+              <button className={action === 'delete' ? 'player-confirm-danger' : 'primary-button'} type="submit" disabled={saving || (action === 'buy' && (clubs.length === 0 || !selectedClub)) || (action === 'sell' && !salePreview)}>
+                {saving ? 'Salvando...' : action === 'delete' ? <><Trash2 size={13} /> Excluir jogador</> : action === 'buy' ? <><ShoppingCart size={13} /> Confirmar compra</> : action === 'sell' ? <><HandCoins size={13} /> Confirmar venda</> : action === 'condition' ? 'Salvar condição' : 'Salvar alterações'}
               </button>
             </footer>
           </form>

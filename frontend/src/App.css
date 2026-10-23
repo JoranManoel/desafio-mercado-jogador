@@ -1564,6 +1564,81 @@ tbody tr:hover {
   line-height: 1.4;
 }
 
+.player-sale-form {
+  gap: 8px;
+}
+
+.player-sale-details {
+  overflow: hidden;
+  border: 1px solid #e7e9ed;
+  border-radius: 7px;
+}
+
+.player-sale-details > div {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 9px;
+  border-bottom: 1px solid #eceef1;
+  color: #737783;
+  font-size: 8px;
+}
+
+.player-sale-details > div:last-child {
+  border-bottom: 0;
+}
+
+.player-sale-details strong {
+  color: #252932;
+  font-size: 8px;
+  font-weight: 550;
+  text-align: right;
+}
+
+.player-sale-details .player-sale-purchase-value,
+.player-sale-success .player-buy-receipt dd.player-sale-purchase-value {
+  font-weight: 400;
+}
+
+.player-sale-details .player-sale-penalty {
+  color: #b66b05;
+}
+
+.player-sale-warning {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 7px;
+  padding: 5px 6px;
+  border: 1px solid #f5d889;
+  border-radius: 7px;
+  background: #fff9e9;
+  color: #a45b08;
+}
+
+.player-sale-warning p {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.player-sale-loading {
+  margin: 0;
+  color: #737783;
+  font-size: 8px;
+}
+
+.player-sale-dialog form > footer {
+  padding-top: 9px;
+}
+
+.player-sale-dialog form > footer .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .player-buy-dialog form > footer {
   padding-top: 9px;
 }
@@ -1678,6 +1753,22 @@ tbody tr:hover {
 
 .player-buy-success > footer {
   margin-top: 11px;
+}
+
+.player-action-dialog.player-buy-success.player-sale-success {
+  width: min(410px, 100%);
+}
+
+.player-sale-success .player-buy-receipt > div {
+  min-height: 34px;
+}
+
+.player-sale-positive {
+  color: #16834a !important;
+}
+
+.player-sale-negative {
+  color: #b42318 !important;
 }
 
 .player-action-error {
