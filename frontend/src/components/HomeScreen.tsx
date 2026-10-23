@@ -19,6 +19,7 @@ type HomeScreenProps = {
   freePlayers: number
   totalClubs: number
   totalMatches: number
+  matchCountError?: string | null
   onStart: () => void
 }
 
@@ -77,6 +78,7 @@ export default function HomeScreen({
   freePlayers,
   totalClubs,
   totalMatches,
+  matchCountError,
   onStart,
 }: HomeScreenProps) {
   return (
@@ -160,6 +162,7 @@ export default function HomeScreen({
               Não precisa de login
             </span>
           </div>
+          {matchCountError && <p className="home-error" role="alert">Não foi possível carregar a quantidade de partidas: {matchCountError}</p>}
         </section>
 
         <nav className="home-steps" aria-label="Etapas da liga">

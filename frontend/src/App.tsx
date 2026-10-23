@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { getPlayers, type Player as ApiPlayer } from './services/players.service'
 import {
@@ -42,7 +42,7 @@ import {
   History,
 } from 'lucide-react'
 import './App.css'
-import { getClubLineup, getClubs, type Club } from './services/clubs.service'
+import { getClubLineup, getClubs, getMatches, type Club } from './services/clubs.service'
 import {
   buyPlayer,
   deletePlayer,
@@ -59,6 +59,7 @@ import HomeScreen from './components/HomeScreen'
 import NewPlayerScreen from './components/NewPlayerScreen'
 import ClubScreen from './components/ClubScreen'
 import ClubDirectoryScreen from './components/ClubDirectoryScreen'
+import { MatchesScreen, StandingsScreen } from './components/LeagueScreens'
 
 
 type Player = {
@@ -201,8 +202,35 @@ function App() {
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [activeSection, setActiveSection] = useState('Início')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [matchCount, setMatchCount] = useState(0)
+  const [matchCountError, setMatchCountError] = useState<string | null>(null)
+  const [matchesRefreshKey, setMatchesRefreshKey] = useState(0)
+  const [standingsRefreshKey, setStandingsRefreshKey] = useState(0)
+  const [openCreateMatchKey, setOpenCreateMatchKey] = useState(0)
   const [clubHistoryRefreshKey, setClubHistoryRefreshKey] = useState(0)
   const [clubHistoryNavigationId, setClubHistoryNavigationId] = useState<number | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void getMatches()
+      .then((matches) => {
+        if (active) {
+          setMatchCount(matches.length)
+          setMatchCountError(null)
+        }
+      })
+      .catch((err: unknown) => {
+        if (active) setMatchCountError(err instanceof Error ? err.message : 'Não foi possível carregar as partidas.')
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleMatchCountChange = useCallback((count: number) => {
+    setMatchCount(count)
+    setMatchCountError(null)
+  }, [])
 
   const filteredPlayers = useMemo(() => {
     const normalizedSearch = normalizeSearchText(search.trim())
@@ -244,7 +272,13 @@ function App() {
 
   function changeSection(section: string) {
     setClubHistoryNavigationId(null)
+    if (section !== 'Partidas') setOpenCreateMatchKey(0)
     setActiveSection(section)
+  }
+
+  function openNewMatchDialog() {
+    setActiveSection('Partidas')
+    setOpenCreateMatchKey((key) => key + 1)
   }
 
   if (activeSection === 'Início') {
@@ -253,7 +287,8 @@ function App() {
         totalPlayers={players.length}
         freePlayers={players.filter((player) => !player.club).length}
         totalClubs={clubs.length}
-        totalMatches={0}
+        totalMatches={matchCount}
+        matchCountError={matchCountError}
         onStart={() => setActiveSection('Jogadores')}
       />
     )
@@ -284,7 +319,7 @@ function App() {
           <div className="nav-label">Liga</div>
           <nav className="nav-list">
             <button className={activeSection === 'Partidas' ? 'nav-item active' : 'nav-item'} onClick={() => changeSection('Partidas')}>
-              <Swords size={16} /><span>Partidas</span><small>2</small>
+              <Swords size={16} /><span>Partidas</span><small>{matchCount}</small>
             </button>
             <button className={activeSection === 'Classificação' ? 'nav-item active' : 'nav-item'} onClick={() => changeSection('Classificação')}>
               <ListOrdered size={16} /><span>Classificação</span>
@@ -315,7 +350,7 @@ function App() {
             </div>
             <div className="league-card">
               <Activity size={16} />
-              <div><strong>Última partida</strong><small>Delta FC 2 × 1 Águias FC</small></div>
+              <div><strong>Partidas disputadas</strong><small>{matchCount}</small></div>
             </div>
             <div className="league-card">
               <Clock3 size={16} />
@@ -357,8 +392,14 @@ function App() {
             className="icon-button"
             aria-label="Atualizar lista"
             onClick={() => {
-              setPage(1)
-              void loadPlayers()
+              if (activeSection === 'Partidas') {
+                setMatchesRefreshKey((key) => key + 1)
+              } else if (activeSection === 'Classificação') {
+                setStandingsRefreshKey((key) => key + 1)
+              } else {
+                setPage(1)
+                void loadPlayers()
+              }
             }}
           ><RefreshCw size={15} /></button>
         </header>
@@ -606,6 +647,22 @@ function App() {
                 if (player) setActionDialog({ action: 'sell', player })
               }}
               onToast={(message) => setToast(message)}
+            />
+          ) : activeSection === 'Partidas' ? (
+            <MatchesScreen
+              clubs={clubs}
+              onToast={setToast}
+              onMatchCountChange={handleMatchCountChange}
+              refreshKey={matchesRefreshKey}
+              openCreateKey={openCreateMatchKey}
+              onRefresh={() => setMatchesRefreshKey((key) => key + 1)}
+            />
+          ) : activeSection === 'Classificação' ? (
+            <StandingsScreen
+              onOpenMatches={() => changeSection('Partidas')}
+              onNewMatch={openNewMatchDialog}
+              refreshKey={standingsRefreshKey}
+              onRefresh={() => setStandingsRefreshKey((key) => key + 1)}
             />
           ) : (
             <section className="placeholder-page">
