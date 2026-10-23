@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, Post, } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, } from '@nestjs/common';
 
 import { BuyPlayerDto } from './dto/buy-player.dto';
 import { MarketService } from './market.service';
@@ -13,6 +13,11 @@ export class MarketController {
   @HttpCode(HttpStatus.OK)
   buy(@Param('id') id: string, @Body() dto: BuyPlayerDto) {
     return this.marketService.buy(id, dto);
+  }
+
+  @Get(':id/sell-preview')
+  sellPreview(@Param('id') id: string) {
+    return this.marketService.sellPreview(id);
   }
 
   @Post(':id/sell')

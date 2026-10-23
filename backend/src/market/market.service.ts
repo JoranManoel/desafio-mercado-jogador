@@ -351,77 +351,24 @@ export class MarketService {
         );
       }
 
-      const marketValueCents = calculateMarketValueCents(
-        moneyToCents(player.baseValue.toFixed(2)),
+      const sale = this.calculateSale(
+        player.baseValue.toFixed(2),
         player.condition as PlayerCondition,
         player.agility,
         player.age,
-      );
-
-      const purchaseValueCents = moneyToCents(
         contract.purchaseValue.toFixed(2),
+        contract.loyaltyUntil,
+        now,
       );
-
-      // 4. Os dias são arredondados para cima.
-      const remainingDays = Math.max(
-        0,
-        Math.ceil(
-          (contract.loyaltyUntil.getTime() - now.getTime()) /
-          DAY_MS,
-        ),
-      );
-
-      // 5. Determina o percentual de multa.
-      let penaltyRate = 0;
-
-      if (remainingDays >= 181) {
-        penaltyRate = 20;
-      } else if (remainingDays >= 31) {
-        penaltyRate = 10;
-      } else if (remainingDays >= 1) {
-        penaltyRate = 5;
-      }
-
-      // Arredonda a multa em centavos e aplica o teto de 10,00.
-      const calculatedPenaltyCents = Math.floor(
-        (marketValueCents * penaltyRate + 50) / 100,
-      );
-
-      const penaltyCents = Math.min(
-        1000,
-        calculatedPenaltyCents,
-      );
-
-      // 6. O lucro pode ser negativo, zero ou positivo.
-      const profitCents =
-        marketValueCents - purchaseValueCents;
-
-      // A comissão só incide sobre o lucro positivo:
-      // 10% da primeira faixa de 10,00; 20% do excedente.
-      const positiveProfitCents = Math.max(0, profitCents);
-
-      const firstBracketCents = Math.min(
-        positiveProfitCents,
-        1000,
-      );
-
-      const secondBracketCents = Math.max(
-        positiveProfitCents - 1000,
-        0,
-      );
-
-      // Calcula a comissão total e arredonda apenas o resultado.
-      const feeCents = Math.floor(
-        (
-          firstBracketCents * 10 +
-          secondBracketCents * 20 +
-          50
-        ) / 100,
-      );
-
-      // 7. Calcula o crédito e o novo caixa.
-      const cashChangeCents =
-        marketValueCents - penaltyCents - feeCents;
+      const {
+        marketValueCents,
+        remainingDays,
+        penaltyRate,
+        penaltyCents,
+        profitCents,
+        feeCents,
+        cashChangeCents,
+      } = sale;
 
       const currentCashCents = moneyToCents(
         club.cash.toFixed(2),
@@ -535,6 +482,121 @@ export class MarketService {
         club_cash: Number(formatMoney(newCashCents)),
       };
     });
+  }
+
+  async sellPreview(rawPlayerId: string) {
+    const playerId = this.parseCanonicalId(rawPlayerId);
+    const player = await this.prisma.player.findFirst({
+      where: { id: playerId, deletedAt: null },
+    });
+
+    if (!player) {
+      throw new NotFoundException('Jogador não encontrado.');
+    }
+
+    if (player.clubId === null) {
+      throw new ConflictException('O jogador está livre e não pode ser vendido.');
+    }
+
+    const [club, contract] = await Promise.all([
+      this.prisma.club.findUnique({ where: { id: player.clubId } }),
+      this.prisma.contract.findFirst({
+        where: {
+          playerId: player.id,
+          clubId: player.clubId,
+          status: 'ATIVO',
+        },
+      }),
+    ]);
+
+    if (!club) {
+      throw new NotFoundException('Clube não encontrado.');
+    }
+
+    if (!contract) {
+      throw new ConflictException(
+        'Não existe contrato ativo para este jogador neste clube.',
+      );
+    }
+
+    const sale = this.calculateSale(
+      player.baseValue.toFixed(2),
+      player.condition as PlayerCondition,
+      player.agility,
+      player.age,
+      contract.purchaseValue.toFixed(2),
+      contract.loyaltyUntil,
+      new Date(),
+    );
+
+    return {
+      player_id: player.id,
+      player_name: player.name,
+      club_id: club.id,
+      club_name: club.name,
+      market_value: Number(formatMoney(sale.marketValueCents)),
+      purchase_value: Number(formatMoney(sale.purchaseValueCents)),
+      loyalty_until: this.formatBrasiliaTimestamp(contract.loyaltyUntil),
+      remaining_days: sale.remainingDays,
+      penalty_rate: sale.penaltyRate,
+      penalty: Number(formatMoney(sale.penaltyCents)),
+      fee: Number(formatMoney(sale.feeCents)),
+      profit: Number(this.formatSignedMoney(sale.profitCents)),
+      cash_change: Number(formatMoney(sale.cashChangeCents)),
+      club_cash: Number(club.cash.toFixed(2)),
+    };
+  }
+
+  private calculateSale(
+    baseValue: string,
+    condition: PlayerCondition,
+    agility: number,
+    age: number,
+    purchaseValue: string,
+    loyaltyUntil: Date,
+    now: Date,
+  ) {
+    const marketValueCents = calculateMarketValueCents(
+      moneyToCents(baseValue),
+      condition,
+      agility,
+      age,
+    );
+    const purchaseValueCents = moneyToCents(purchaseValue);
+    const remainingDays = Math.max(
+      0,
+      Math.ceil((loyaltyUntil.getTime() - now.getTime()) / DAY_MS),
+    );
+    const penaltyRate = remainingDays >= 181
+      ? 20
+      : remainingDays >= 31
+        ? 10
+        : remainingDays >= 1
+          ? 5
+          : 0;
+    const penaltyCents = Math.min(
+      1000,
+      Math.floor((marketValueCents * penaltyRate + 50) / 100),
+    );
+    const profitCents = marketValueCents - purchaseValueCents;
+    const positiveProfitCents = Math.max(0, profitCents);
+    const firstBracketCents = Math.min(positiveProfitCents, 1000);
+    const secondBracketCents = Math.max(positiveProfitCents - 1000, 0);
+    const feeCents = Math.floor(
+      (firstBracketCents * 10 + secondBracketCents * 20 + 50) / 100,
+    );
+    const cashChangeCents = marketValueCents - penaltyCents - feeCents;
+
+    return {
+      marketValueCents,
+      purchaseValueCents,
+      remainingDays,
+      penaltyRate,
+      penaltyCents,
+      profitCents,
+      feeCents,
+      cashChangeCents,
+    };
   }
 
   private formatSignedMoney(cents: number): string {
