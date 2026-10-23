@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { createPortal } from 'react-dom'
 import { getPlayers, type Player as ApiPlayer } from './services/players.service'
 import {
-  Activity,
   CalendarClock,
   ChevronDown,
   ChevronLeft,
@@ -42,7 +41,7 @@ import {
   History,
 } from 'lucide-react'
 import './App.css'
-import { getClubLineup, getClubs, getMatches, type Club } from './services/clubs.service'
+import { getClubLineup, getClubs, getMatches, getStandings, type Club, type Standing } from './services/clubs.service'
 import {
   buyPlayer,
   deletePlayer,
@@ -204,11 +203,27 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [matchCount, setMatchCount] = useState(0)
   const [matchCountError, setMatchCountError] = useState<string | null>(null)
+  const [leagueLeader, setLeagueLeader] = useState<Standing | null>(null)
+  const [leaderError, setLeaderError] = useState<string | null>(null)
+  const leaderRequestId = useRef(0)
   const [matchesRefreshKey, setMatchesRefreshKey] = useState(0)
   const [standingsRefreshKey, setStandingsRefreshKey] = useState(0)
   const [openCreateMatchKey, setOpenCreateMatchKey] = useState(0)
   const [clubHistoryRefreshKey, setClubHistoryRefreshKey] = useState(0)
   const [clubHistoryNavigationId, setClubHistoryNavigationId] = useState<number | null>(null)
+
+  const loadLeagueLeader = useCallback(async () => {
+    const requestId = ++leaderRequestId.current
+    try {
+      const standings = await getStandings()
+      if (requestId !== leaderRequestId.current) return
+      setLeagueLeader(standings[0] ?? null)
+      setLeaderError(null)
+    } catch (err) {
+      if (requestId !== leaderRequestId.current) return
+      setLeaderError(err instanceof Error ? err.message : 'Não foi possível carregar a classificação.')
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -217,6 +232,7 @@ function App() {
         if (active) {
           setMatchCount(matches.length)
           setMatchCountError(null)
+          if (matches.length > 0) void loadLeagueLeader()
         }
       })
       .catch((err: unknown) => {
@@ -225,12 +241,19 @@ function App() {
     return () => {
       active = false
     }
-  }, [])
+  }, [loadLeagueLeader])
 
   const handleMatchCountChange = useCallback((count: number) => {
     setMatchCount(count)
     setMatchCountError(null)
-  }, [])
+    if (count > 0) {
+      void loadLeagueLeader()
+    } else {
+      leaderRequestId.current += 1
+      setLeagueLeader(null)
+      setLeaderError(null)
+    }
+  }, [loadLeagueLeader])
 
   const filteredPlayers = useMemo(() => {
     const normalizedSearch = normalizeSearchText(search.trim())
@@ -289,6 +312,8 @@ function App() {
         totalClubs={clubs.length}
         totalMatches={matchCount}
         matchCountError={matchCountError}
+        leagueLeader={leagueLeader}
+        leaderError={leaderError}
         onStart={() => setActiveSection('Jogadores')}
       />
     )
@@ -346,15 +371,15 @@ function App() {
           <div className="sidebar-bottom">
             <div className="league-card">
               <Trophy size={16} />
-              <div><strong>Liga Fictícia 2026</strong><small>6 clubes · 23 jogadores</small></div>
+              <div><strong>Liga Fictícia 2026</strong><small>{clubs.length} clubes · {filteredPlayers.length} jogadores</small></div>
             </div>
             <div className="league-card">
-              <Activity size={16} />
+              <Swords size={16} />
               <div><strong>Partidas disputadas</strong><small>{matchCount}</small></div>
             </div>
             <div className="league-card">
               <Clock3 size={16} />
-              <div><strong>Horário de Brasília (UTC−3)</strong></div>
+              <div><strong>Horário de Brasília { new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }) }</strong></div>
             </div>
           </div>
         </aside>
@@ -516,7 +541,20 @@ function App() {
                       Limpar filtros
                     </button>
                   </td>
-                </tr> || <tr className='table-card-body'>
+                </tr> || !loading && error && (
+                            <tr className='table-card table-card-body'>
+                              <td colSpan={10} className="empty-state">
+                                <ServerOff size={22} />
+                                <strong>Não foi possível carregar os jogadores</strong>
+                                <span style={{ margin: '10px 0' }}>{error}</span>
+                                <button className="secondary-button" onClick={() => void loadPlayers()}>
+                                  <RefreshCw size={14} />
+                                  Tentar de novo
+                                </button>
+                              </td>
+                            </tr>
+                          ) ||                
+                <tr className='table-card-body'>
 
                     <div className="table-toolbar">
                       <div className="tabs">
@@ -552,20 +590,6 @@ function App() {
                             <tr>
                               <td colSpan={10} className="empty-state">
                                 Carregando jogadores...
-                              </td>
-                            </tr>
-                          )}
-
-                          {!loading && error && (
-                            <tr>
-                              <td colSpan={10} className="empty-state">
-                                <ServerOff size={22} />
-                                <strong>Não foi possível carregar os jogadores</strong>
-                                <span style={{ margin: '10px 0' }}>{error}</span>
-                                <button className="secondary-button" onClick={() => void loadPlayers()}>
-                                  <RefreshCw size={14} />
-                                  Tentar de novo
-                                </button>
                               </td>
                             </tr>
                           )}

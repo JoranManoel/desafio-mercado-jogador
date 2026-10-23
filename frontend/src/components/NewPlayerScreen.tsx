@@ -81,7 +81,7 @@ export default function NewPlayerScreen({ onCancel, onCreated, onViewDetails }: 
   const maxAgility = age >= 35 ? 85 : 100
 
   const overall = useMemo(
-    () => calculateOverall(position, attributes),
+    () => calculateOverall(position, { pace, shooting, passing, dribbling, defending, physical }),
     [position, pace, shooting, passing, dribbling, defending, physical],
   )
 

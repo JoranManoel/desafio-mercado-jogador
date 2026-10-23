@@ -224,16 +224,28 @@ export class MatchesService {
 
     return matches.map((match) => ({
       id: match.id,
+      played_at: this.formatBrasiliaTimestamp(match.playedAt),
+      home: {
+        club_id: match.homeClubId,
+        club_name: match.homeClub.name,
+        formation: match.homeFormation,
+        goals: match.homeGoals,
+      },
+      away: {
+        club_id: match.awayClubId,
+        club_name: match.awayClub.name,
+        formation: match.awayFormation,
+        goals: match.awayGoals,
+      },
       home_club_id: match.homeClubId,
       home_club_name: match.homeClub.name,
       away_club_id: match.awayClubId,
       away_club_name: match.awayClub.name,
       home_goals: match.homeGoals,
       away_goals: match.awayGoals,
-      result: this.getResult(match.homeGoals, match.awayGoals),
       home_formation: match.homeFormation,
       away_formation: match.awayFormation,
-      played_at: this.formatBrasiliaTimestamp(match.playedAt),
+      result: this.getResult(match.homeGoals, match.awayGoals),
     }));
   }
 
@@ -257,19 +269,47 @@ export class MatchesService {
 
     return {
       id: match.id,
+      played_at: this.formatBrasiliaTimestamp(match.playedAt),
+      home: {
+        club_id: match.homeClubId,
+        club_name: match.homeClub.name,
+        formation: match.homeFormation,
+        goals: match.homeGoals,
+      },
+      away: {
+        club_id: match.awayClubId,
+        club_name: match.awayClub.name,
+        formation: match.awayFormation,
+        goals: match.awayGoals,
+      },
       home_club_id: match.homeClubId,
       home_club_name: match.homeClub.name,
       away_club_id: match.awayClubId,
       away_club_name: match.awayClub.name,
       home_goals: match.homeGoals,
       away_goals: match.awayGoals,
-      result: this.getResult(match.homeGoals, match.awayGoals),
       home_formation: match.homeFormation,
       away_formation: match.awayFormation,
-      played_at: this.formatBrasiliaTimestamp(match.playedAt),
+      result: this.getResult(match.homeGoals, match.awayGoals),
       duels: match.duels.map((duel) => ({
         order: duel.order,
         attacking_club_id: duel.attackingClubId,
+        attacker: {
+          player_id: duel.attackerId,
+          player_name: duel.attackerName,
+          position: duel.attackerPosition,
+          condition: duel.attackerCondition,
+          attribute: duel.attackAttribute,
+          value: duel.attackValue,
+        },
+        defender: {
+          player_id: duel.defenderId,
+          player_name: duel.defenderName,
+          position: duel.defenderPosition,
+          condition: duel.defenderCondition,
+          attribute: duel.defenseAttribute,
+          value: duel.defenseValue,
+        },
         attacker_id: duel.attackerId,
         defender_id: duel.defenderId,
         attacker_name: duel.attackerName,
@@ -434,8 +474,23 @@ export class MatchesService {
   }
 
   private formatBrasiliaTimestamp(date: Date): string {
-    return new Date(date.getTime() - 3 * 60 * 60 * 1000)
-      .toISOString()
-      .replace('Z', '-03:00');
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Recife',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+
+    const get = (type: string) =>
+      parts.find((part) => part.type === type)?.value ?? '';
+
+    return (
+      `${get('year')}-${get('month')}-${get('day')}` +
+      `T${get('hour')}:${get('minute')}:${get('second')}-03:00`
+    );
   }
 }

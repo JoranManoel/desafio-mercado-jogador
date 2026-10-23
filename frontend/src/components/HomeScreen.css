@@ -149,6 +149,21 @@
   color: #a0a3ab;
 }
 
+.home-leader {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.home-leader svg {
+  color: #c58a11;
+}
+
+.home-leader strong {
+  color: #272a31;
+  font-weight: 600;
+}
+
 .home-hero {
   position: relative;
   max-width: 760px;

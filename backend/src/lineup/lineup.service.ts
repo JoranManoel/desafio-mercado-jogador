@@ -1,20 +1,40 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { PlayersService } from '../players/players.service';
 import { UpdateLineupDto } from './dto/update-lineup.dto';
+import { normalizeSearchText } from '../common/utils/normalize-search-text';
 
 const FORMATIONS = ['3-1', '2-2', '2-1-1', '1-2-1'] as const;
 
 type Formation = (typeof FORMATIONS)[number];
 
+/** Posições esperadas nos 4 jogadores de linha, por formação. */
+const FORMATION_LINE_POSITIONS: Record<Formation, string[]> = {
+  '3-1': ['ZAG', 'LAT', 'LAT', 'ATA'],
+  '2-2': ['ZAG', 'LAT', 'ATA', 'ATA'],
+  '2-1-1': ['ZAG', 'LAT', 'MEI', 'ATA'],
+  '1-2-1': ['ZAG', 'MEI', 'MEI', 'ATA'],
+};
+
+const POSITION_ORDER: Record<string, number> = {
+  GOL: 0,
+  ZAG: 1,
+  LAT: 2,
+  MEI: 3,
+  ATA: 4,
+};
+
 @Injectable()
 export class LineupService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly playersService: PlayersService,
+  ) {}
 
   async findOne(rawClubId: string) {
     const clubId = this.parseId(rawClubId);
@@ -23,9 +43,7 @@ export class LineupService {
       where: { id: clubId },
       include: {
         lineupEntries: {
-          include: {
-            player: true,
-          },
+          include: { player: true },
         },
       },
     });
@@ -37,31 +55,30 @@ export class LineupService {
     const players = club.lineupEntries
       .map(({ player }) => player)
       .sort((a, b) => {
-        const order: Record<string, number> = {
-          GOL: 0,
-          ZAG: 1,
-          LAT: 2,
-          MEI: 3,
-          ATA: 4,
-        };
+        const positionDiff =
+          (POSITION_ORDER[a.position] ?? 99) -
+          (POSITION_ORDER[b.position] ?? 99);
 
-        return (
-          (order[a.position] ?? 99) - (order[b.position] ?? 99) ||
-          a.id - b.id
-        );
+        if (positionDiff !== 0) return positionDiff;
+
+        const nameA = normalizeSearchText(a.name);
+        const nameB = normalizeSearchText(b.name);
+
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+
+        return a.id - b.id;
       });
+
+    const complete = players.length === 5;
 
     return {
       club_id: club.id,
-      club_name: club.name,
       formation: club.formation,
-      total_players: players.length,
-      players: players.map((player) => ({
-        id: player.id,
-        name: player.name,
-        position: player.position,
-        condition: player.condition,
-      })),
+      complete,
+      players: players.map((player) =>
+        this.playersService.toApiResponse(player),
+      ),
     };
   }
 
@@ -69,7 +86,8 @@ export class LineupService {
     const clubId = this.parseId(rawClubId);
 
     if (!FORMATIONS.includes(dto.formation as Formation)) {
-      throw new BadRequestException('Formação inválida.');
+      // formation inválida → 400 (já validado pelo DTO, mas defensivo)
+      throw new ConflictException('Formação inválida.');
     }
 
     const club = await this.prisma.club.findUnique({
@@ -81,6 +99,7 @@ export class LineupService {
       throw new NotFoundException('Clube não encontrado.');
     }
 
+    // Busca apenas jogadores existentes e não excluídos.
     const players = await this.prisma.player.findMany({
       where: {
         id: { in: dto.player_ids },
@@ -95,14 +114,15 @@ export class LineupService {
       },
     });
 
-    if (players.length !== 5) {
-      throw new BadRequestException(
-        'Todos os cinco jogadores devem existir e não podem estar excluídos.',
+    // Se o número retornado for menor que 5, algum id não existe ou está excluído → 404.
+    if (players.length !== dto.player_ids.length) {
+      throw new NotFoundException(
+        'Um ou mais jogadores não foram encontrados.',
       );
     }
 
     const playersFromOtherClubs = players.filter(
-      (player) => player.clubId !== clubId,
+      (p) => p.clubId !== clubId,
     );
 
     if (playersFromOtherClubs.length > 0) {
@@ -112,7 +132,7 @@ export class LineupService {
     }
 
     const sickPlayers = players.filter(
-      (player) => player.condition === 'DOENTE',
+      (p) => p.condition === 'DOENTE',
     );
 
     if (sickPlayers.length > 0) {
@@ -122,37 +142,24 @@ export class LineupService {
     }
 
     const goalkeepers = players.filter(
-      (player) => player.position === 'GOL',
+      (p) => p.position === 'GOL',
     );
 
     if (goalkeepers.length !== 1) {
-      throw new BadRequestException(
+      throw new ConflictException(
         'A escalação deve conter exatamente um goleiro.',
       );
     }
 
     const linePlayers = players.filter(
-      (player) => player.position !== 'GOL',
+      (p) => p.position !== 'GOL',
     );
-
-    if (
-      linePlayers.some(
-        (player) =>
-          !['ZAG', 'LAT', 'MEI', 'ATA'].includes(player.position),
-      )
-    ) {
-      throw new BadRequestException(
-        'A escalação contém uma posição inválida.',
-      );
-    }
 
     this.validateFormation(dto.formation as Formation, linePlayers);
 
     try {
       await this.prisma.$transaction(async (tx) => {
-        await tx.lineup.deleteMany({
-          where: { clubId },
-        });
+        await tx.lineup.deleteMany({ where: { clubId } });
 
         await tx.lineup.createMany({
           data: dto.player_ids.map((playerId) => ({
@@ -188,33 +195,11 @@ export class LineupService {
     formation: Formation,
     players: Array<{ position: string }>,
   ) {
-    const defenders = players.filter((player) =>
-      ['ZAG', 'LAT'].includes(player.position),
-    ).length;
+    const expected = [...FORMATION_LINE_POSITIONS[formation]].sort();
+    const actual = players.map((p) => p.position).sort();
 
-    const midfielders = players.filter(
-      (player) => player.position === 'MEI',
-    ).length;
-
-    const attackers = players.filter(
-      (player) => player.position === 'ATA',
-    ).length;
-
-    const valid =
-      formation === '3-1'
-        ? defenders === 3 && midfielders + attackers === 1
-        : formation === '2-2'
-          ? defenders === 2 && midfielders + attackers === 2
-          : formation === '2-1-1'
-            ? defenders === 2 &&
-              midfielders === 1 &&
-              attackers === 1
-            : defenders === 1 &&
-              midfielders === 2 &&
-              attackers === 1;
-
-    if (!valid) {
-      throw new BadRequestException(
+    if (expected.join(',') !== actual.join(',')) {
+      throw new ConflictException(
         `As posições dos jogadores não correspondem à formação ${formation}.`,
       );
     }

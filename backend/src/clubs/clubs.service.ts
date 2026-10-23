@@ -122,14 +122,11 @@ export class ClubsService {
   }
 
   async findAll(sort?: string) {
-    const selectedSort = sort ?? 'name_asc';
+    const selectedSort = sort ?? 'name';
 
-    // Mantemos estas opções explícitas. Confirmaremos os enums
-    // definitivos com a seção oficial de query params do enunciado.
     const allowedSorts = [
       'name',
-      'name_asc',
-      'net_worth',
+      'net_worth_asc',
       'net_worth_desc',
     ];
 
@@ -149,19 +146,16 @@ export class ClubsService {
       this.buildSummary(club),
     );
 
-    const sortByNetWorth =
-      selectedSort === 'net_worth' ||
-      selectedSort === 'net_worth_desc';
-
     summaries.sort((a, b) => {
-      if (sortByNetWorth) {
-        const difference = b.netWorthCents - a.netWorthCents;
-
-        if (difference !== 0) {
-          return difference;
-        }
+      if (selectedSort === 'net_worth_asc') {
+        const diff = a.netWorthCents - b.netWorthCents;
+        if (diff !== 0) return diff;
+      } else if (selectedSort === 'net_worth_desc') {
+        const diff = b.netWorthCents - a.netWorthCents;
+        if (diff !== 0) return diff;
       }
 
+      // Empate ou ordenação por nome: alfabética pelo nameKey e depois id.
       if (a.nameKey < b.nameKey) return -1;
       if (a.nameKey > b.nameKey) return 1;
 

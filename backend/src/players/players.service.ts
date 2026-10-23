@@ -82,7 +82,7 @@ export class PlayersService {
       query.limit,
       'limit',
       1,
-      100,
+      50,
     ) ?? 10;
 
     let search: string | undefined;
@@ -204,22 +204,49 @@ export class PlayersService {
       );
     }
 
-    const allowedSorts = [
-      'name_asc',
-      'name_desc',
+    const VALID_SORT_FIELDS = [
+      'name',
       'value_asc',
       'value_desc',
       'age_asc',
       'age_desc',
-      'position_asc',
-      'position_desc',
-    ];
+      'position',
+    ] as const;
 
-    const sort = query.sort ?? 'name_asc';
+    type SortField = (typeof VALID_SORT_FIELDS)[number];
 
-    if (!allowedSorts.includes(sort)) {
-      throw new BadRequestException('sort inválido.');
+    const rawSort = query.sort ?? 'name';
+    const sortParts = rawSort.split(',');
+
+    if (sortParts.length > 2) {
+      throw new BadRequestException('sort aceita no máximo dois critérios.');
     }
+
+    const usedFields = new Set<string>();
+
+    for (const part of sortParts) {
+      if (!VALID_SORT_FIELDS.includes(part as SortField)) {
+        throw new BadRequestException(`sort inválido: "${part}".`);
+      }
+
+      // Detecta campo duplicado (ex.: value_asc,value_desc têm base 'value').
+      const baseField =
+        part === 'value_asc' || part === 'value_desc'
+          ? 'value'
+          : part === 'age_asc' || part === 'age_desc'
+            ? 'age'
+            : part;
+
+      if (usedFields.has(baseField)) {
+        throw new BadRequestException(
+          'sort não pode repetir o mesmo campo.',
+        );
+      }
+
+      usedFields.add(baseField);
+    }
+
+    const sortCriteria = sortParts as SortField[];
 
     // Buscamos somente jogadores ativos. Os cálculos de mercado
     // são feitos antes dos filtros e da paginação.
@@ -305,61 +332,38 @@ export class PlayersService {
     const compareText = (a: string, b: string): number =>
       a < b ? -1 : a > b ? 1 : 0;
 
-    filtered.sort((a, b) => {
-      let comparison = 0;
-
-      switch (sort) {
-        case 'name_asc':
-        case 'name_desc':
-          comparison = compareText(a.nameKey, b.nameKey);
-
-          if (sort === 'name_desc') {
-            comparison *= -1;
-          }
-          break;
-
+    const applyCriterion = (
+      a: (typeof filtered)[number],
+      b: (typeof filtered)[number],
+      criterion: SortField,
+    ): number => {
+      switch (criterion) {
+        case 'name':
+          return compareText(a.nameKey, b.nameKey);
         case 'value_asc':
+          return a.marketValueCents - b.marketValueCents;
         case 'value_desc':
-          comparison =
-            a.marketValueCents - b.marketValueCents;
-
-          if (sort === 'value_desc') {
-            comparison *= -1;
-          }
-          break;
-
+          return b.marketValueCents - a.marketValueCents;
         case 'age_asc':
+          return a.age - b.age;
         case 'age_desc':
-          comparison = a.age - b.age;
+          return b.age - a.age;
+        case 'position':
+          return positionOrder[a.position] - positionOrder[b.position];
+        default:
+          return 0;
+      }
+    };
 
-          if (sort === 'age_desc') {
-            comparison *= -1;
-          }
-          break;
-
-        case 'position_asc':
-        case 'position_desc':
-          comparison =
-            positionOrder[a.position] -
-            positionOrder[b.position];
-
-          if (sort === 'position_desc') {
-            comparison *= -1;
-          }
-          break;
+    filtered.sort((a, b) => {
+      for (const criterion of sortCriteria) {
+        const result = applyCriterion(a, b, criterion);
+        if (result !== 0) return result;
       }
 
-      // Empates nas ordenações sempre são resolvidos por nome
-      // normalizado e, depois, pelo ID crescente.
-      if (comparison !== 0) {
-        return comparison;
-      }
-
+      // Empate final: nome normalizado e depois id crescente.
       const nameComparison = compareText(a.nameKey, b.nameKey);
-
-      return nameComparison !== 0
-        ? nameComparison
-        : a.id - b.id;
+      return nameComparison !== 0 ? nameComparison : a.id - b.id;
     });
 
     const totalItems = filtered.length;

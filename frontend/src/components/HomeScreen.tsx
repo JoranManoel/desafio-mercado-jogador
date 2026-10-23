@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 
 import './HomeScreen.css'
+import type { Standing } from '../services/clubs.service'
 
 type HomeScreenProps = {
   totalPlayers: number
@@ -20,6 +21,8 @@ type HomeScreenProps = {
   totalClubs: number
   totalMatches: number
   matchCountError?: string | null
+  leagueLeader: Standing | null
+  leaderError?: string | null
   onStart: () => void
 }
 
@@ -79,6 +82,8 @@ export default function HomeScreen({
   totalClubs,
   totalMatches,
   matchCountError,
+  leagueLeader,
+  leaderError,
   onStart,
 }: HomeScreenProps) {
   return (
@@ -105,7 +110,15 @@ export default function HomeScreen({
           <span className="home-status-dot" />
           <strong>Liga Fictícia 2026</strong>
           <span className="home-pill-divider">·</span>
-          {!totalMatches && <span>Nenhuma partida ainda</span>}
+          {totalMatches === 0 ? (
+            <span>Nenhuma partida ainda</span>
+          ) : leagueLeader ? (
+            <span className="home-leader">
+              Líder: <strong>{leagueLeader.club_name}</strong> · {leagueLeader.points} pts
+            </span>
+          ) : (
+            <span>{leaderError ? 'Classificação indisponível' : 'Carregando líder...'}</span>
+          )}
         </div>
 
         <section className="home-hero">
@@ -163,6 +176,7 @@ export default function HomeScreen({
             </span>
           </div>
           {matchCountError && <p className="home-error" role="alert">Não foi possível carregar a quantidade de partidas: {matchCountError}</p>}
+          {leaderError && totalMatches > 0 && <p className="home-error" role="alert">Não foi possível carregar o líder da liga: {leaderError}</p>}
         </section>
 
         <nav className="home-steps" aria-label="Etapas da liga">
@@ -188,7 +202,7 @@ export default function HomeScreen({
 
         <footer className="home-footer">
           <Clock3 size={13} />
-          <span>Liga Fictícia 2026 · Horário de Brasília (UTC−3)</span>
+          <span>Liga Fictícia 2026 · Horário de Brasília { new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' }) }</span>
         </footer>
       </section>
     </main>

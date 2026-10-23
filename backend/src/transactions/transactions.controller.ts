@@ -1,39 +1,44 @@
 import {
   Controller,
   Get,
-  Header,
   Param,
+  Query,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 
 import { TransactionsService } from './transactions.service';
 
 @Controller('clubs')
 export class TransactionsController {
   constructor(
-    private readonly transactionsService:
-      TransactionsService,
+    private readonly transactionsService: TransactionsService,
   ) {}
 
-  @Get(':id/transactions/summary')
-  getSummary(@Param('id') id: string) {
-    return this.transactionsService.getSummary(id);
-  }
-
   @Get(':id/transactions/export')
-  @Header(
-    'Content-Type',
-    'text/csv; charset=utf-8',
-  )
-  @Header(
-    'Content-Disposition',
-    'attachment; filename="transactions.csv"',
-  )
-  exportCsv(@Param('id') id: string) {
-    return this.transactionsService.exportCsv(id);
+  async exportCsv(
+    @Param('id') id: string,
+    @Query('type') type?: string,
+    @Query('player_id') playerId?: string,
+    @Res() response?: Response,
+  ) {
+    const csv = await this.transactionsService.exportCsv(
+      id,
+      type,
+      playerId,
+    );
+
+    response!
+      .setHeader('Content-Type', 'text/csv; charset=utf-8')
+      .send(csv);
   }
 
   @Get(':id/transactions')
-  findAll(@Param('id') id: string) {
-    return this.transactionsService.findAll(id);
+  findAll(
+    @Param('id') id: string,
+    @Query('type') type?: string,
+    @Query('player_id') playerId?: string,
+  ) {
+    return this.transactionsService.findAll(id, type, playerId);
   }
 }

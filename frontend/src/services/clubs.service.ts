@@ -188,14 +188,54 @@ export async function updateClubLineup(
   return response.json() as Promise<ClubLineup>
 }
 
-export async function getClubTransactions(clubId: number): Promise<ClubTransaction[]> {
-  const response = await fetch(`${API_URL}/clubs/${clubId}/transactions`)
+export type TransactionsResponse = {
+  data: ClubTransaction[]
+  summary: {
+    total_spent: number
+    total_received: number
+    total_fees: number
+    total_penalties: number
+    total_profit: number
+  }
+}
+
+export async function getClubTransactions(
+  clubId: number,
+  type?: string,
+  playerId?: number,
+): Promise<ClubTransaction[]> {
+  const params = new URLSearchParams()
+  if (type) params.set('type', type)
+  if (playerId !== undefined) params.set('player_id', String(playerId))
+  const query = params.size > 0 ? `?${params}` : ''
+
+  const response = await fetch(`${API_URL}/clubs/${clubId}/transactions${query}`)
 
   if (!response.ok) {
     throw new Error(await getApiError(response, `Não foi possível carregar o histórico. Erro HTTP ${response.status}.`))
   }
 
-  return response.json() as Promise<ClubTransaction[]>
+  const json = (await response.json()) as ClubTransaction[] | TransactionsResponse
+  return Array.isArray(json) ? json : json.data
+}
+
+export async function downloadClubTransactionsCsv(
+  clubId: number,
+  type?: string,
+  playerId?: number,
+): Promise<Blob> {
+  const params = new URLSearchParams()
+  if (type) params.set('type', type)
+  if (playerId !== undefined) params.set('player_id', String(playerId))
+  const query = params.size > 0 ? `?${params}` : ''
+
+  const response = await fetch(`${API_URL}/clubs/${clubId}/transactions/export${query}`)
+
+  if (!response.ok) {
+    throw new Error(await getApiError(response, `Não foi possível exportar o CSV. Erro HTTP ${response.status}.`))
+  }
+
+  return response.blob()
 }
 
 export async function getMatches(clubId?: number): Promise<MatchSummary[]> {

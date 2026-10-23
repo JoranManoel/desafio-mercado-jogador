@@ -23,6 +23,7 @@ import {
     getClubLineup,
     getClubRosterContracts,
     getClubTransactions,
+    downloadClubTransactionsCsv,
     updateClubLineup,
     type Club,
     type ClubFormation,
@@ -316,27 +317,25 @@ export default function ClubScreen({ club, players, onBuyPlayers, onSellPlayer, 
         setSaveError(null)
     }
 
-    function exportHistory() {
-        const headers = ['data_hora', 'tipo', 'jogador', 'valor', 'taxa_comissao', 'multa', 'lucro', 'variacao_caixa']
-        const rows = filteredTransactions.map((transaction) => [
-            new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(transaction.created_at)),
-            transaction.type === 'COMPRA' ? 'Compra' : 'Venda',
-            transaction.player_name,
-            transaction.value.toFixed(2),
-            transaction.fee.toFixed(2),
-            transaction.penalty.toFixed(2),
-            transaction.profit?.toFixed(2) ?? '',
-            transaction.cash_change.toFixed(2),
-        ])
-        const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`
-        const content = `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsv).join(';')).join('\r\n')}`
-        const objectUrl = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }))
-        const link = document.createElement('a')
-        link.href = objectUrl
-        link.download = `historico-${club.acronym.toLowerCase()}.csv`
-        link.click()
-        URL.revokeObjectURL(objectUrl)
-        onToast({ title: 'CSV baixado', description: `historico-${club.acronym.toLowerCase()}.csv, com os filtros aplicados.` })
+    async function exportHistory() {
+        const types: string[] = []
+        if (historyTypes.COMPRA) types.push('COMPRA')
+        if (historyTypes.VENDA) types.push('VENDA')
+        const typeParam = types.length === 1 ? types[0] : undefined
+        const playerIdParam = historyPlayerId ? Number(historyPlayerId) : undefined
+
+        try {
+            const blob = await downloadClubTransactionsCsv(club.id, typeParam, playerIdParam)
+            const objectUrl = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = objectUrl
+            link.download = `historico-${club.acronym.toLowerCase()}.csv`
+            link.click()
+            URL.revokeObjectURL(objectUrl)
+            onToast({ title: 'CSV baixado', description: `historico-${club.acronym.toLowerCase()}.csv, com os filtros aplicados.` })
+        } catch (err) {
+            onToast({ title: 'Erro ao baixar CSV', description: err instanceof Error ? err.message : 'Falha na exportação.' })
+        }
     }
 
     function clearHistoryFilters() {
